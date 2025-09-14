@@ -35,10 +35,11 @@ const AppNavigator: React.FC = () => {
           // tabBarShowLabel: false,
           tabBarStyle: {
             position: "absolute",
-            height: 80,
+            height: 100,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            backgroundColor: "#fff",
+            borderColor: "transparent",
+            backgroundColor: "#374559",
             shadowColor: "#000",
             shadowOffset: { width: 0, height: -3 },
             shadowOpacity: 0.1,
@@ -121,7 +122,7 @@ export default AppNavigator;
 const styles = StyleSheet.create({
   floatingButton: {
     position: "absolute",
-    bottom: 40, // ⬅️ push it higher
+    bottom: 50, // ⬅️ push it higher
     alignSelf: "center",
     width: 60,
     height: 60,
@@ -133,6 +134,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    elevation: 5,
+    elevation: 20,
   },
 });

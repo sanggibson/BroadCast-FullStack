@@ -29,7 +29,7 @@ const StatusInput = () => {
 
   const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ["images", "videos"],
       allowsEditing: false,
       allowsMultipleSelection: true,
       quality: 1,
@@ -46,7 +46,7 @@ const StatusInput = () => {
 
   const takeMedia = async () => {
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ["images", "videos"],
       allowsEditing: false,
       quality: 1,
     });

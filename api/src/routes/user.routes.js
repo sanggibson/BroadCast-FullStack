@@ -1,14 +1,13 @@
+// routes/user.routes.js
 const express = require("express");
+const dotenv = require("dotenv");
+const User = require("../models/user"); // no .js extension needed in CommonJS
+
+dotenv.config();
+
 const router = express.Router();
-const User = require("../models/user");
-const { StreamChat } = require("stream-chat");
 
-const serverClient = StreamChat.getInstance(
-  process.env.STREAM_API_KEY,
-  process.env.STREAM_API_SECRET
-);
-
-// CREATE OR UPDATE USER
+// ------------------- CREATE OR UPDATE USER -------------------
 router.post("/create-user", async (req, res) => {
   try {
     const { clerkId, email, firstName, lastName, image, nickName, provider } =
@@ -34,7 +33,7 @@ router.post("/create-user", async (req, res) => {
         .json({ success: true, user, message: "User updated" });
     }
 
-    // ✅ Create new user (can be partial if names not yet collected)
+    // ✅ Create new user
     user = await User.create({
       clerkId,
       email,
@@ -52,6 +51,7 @@ router.post("/create-user", async (req, res) => {
   }
 });
 
+// ------------------- UPDATE USER LOCATION -------------------
 router.post("/update-location", async (req, res) => {
   try {
     const { clerkId, county, constituency, ward } = req.body;
@@ -73,7 +73,7 @@ router.post("/update-location", async (req, res) => {
   }
 });
 
-// GET user by clerkId
+// ------------------- GET USER BY CLERKID -------------------
 router.get("/:clerkId", async (req, res) => {
   try {
     const { clerkId } = req.params;
@@ -90,35 +90,28 @@ router.get("/:clerkId", async (req, res) => {
   }
 });
 
-router.post("/stream-token", async (req, res) => {
+// ------------------- UPDATE USER IMAGE -------------------
+router.post("/update-image", async (req, res) => {
   try {
-    const { clerkId } = req.body;
-
-    if (!clerkId) {
-      return res.status(400).json({ error: "clerkId required" });
+    const { clerkId, image } = req.body;
+    if (!clerkId || !image) {
+      return res.status(400).json({ error: "clerkId and image are required" });
     }
 
-    // ✅ Make sure user exists in your DB
-    const user = await User.findOne({ clerkId });
+    const user = await User.findOneAndUpdate(
+      { clerkId },
+      { image },
+      { new: true }
+    );
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Generate token (server-side only!)
-    const token = serverClient.createToken(clerkId);
-
-    res.json({
-      token,
-      user: {
-        id: clerkId,
-        name:
-          `${user.firstName} ${user.lastName}` || user.nickName || "Anonymous",
-        image: user.image,
-      },
-    });
-  } catch (error) {
-    console.error("Error creating Stream token:", error);
-    res.status(500).json({ error: "Server error creating Stream token" });
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error("Error updating profile image:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

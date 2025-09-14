@@ -10,6 +10,7 @@ type UserOnboarding = {
   setFirstName: (name: string) => void;
   setLastName: (name: string) => void;
   setNickName: (name: string) => void;
+  setImage: (image: string) => void;
 };
 
 const UserOnboardingContext = createContext<UserOnboarding | null>(null);
@@ -37,6 +38,7 @@ export const UserOnboardingProvider = ({
         setNickName,
         sessionId,
         setSessionId,
+        setImage
       }}
     >
       {children}

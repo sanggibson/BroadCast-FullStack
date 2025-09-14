@@ -7,13 +7,15 @@ import TypeWriter from "react-native-typewriter";
 import { useUser } from "@clerk/clerk-expo";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/types/navigation";
 
 const LocationSelection = () => {
   const [selectedCounty, setSelectedCounty] = useState("");
   const [selectedConstituency, setSelectedConstituency] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
   const [loading, setloading] = useState(false);
-  const  navigation  = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Get county object
   const county = iebc.counties.find((c) => c.name === selectedCounty) || null;
@@ -59,13 +61,11 @@ const LocationSelection = () => {
     }
   };
 
- 
-
-    useEffect(() => {
-      if (user?.unsafeMetadata?.onboarded) {
-        navigation.replace("Drawer");
-      }
-    }, [user]);
+  useEffect(() => {
+    if (user?.unsafeMetadata?.onboarded) {
+      navigation.replace("Drawer");
+    }
+  }, [user]);
 
   return (
     <SafeAreaView style={{ flex: 1, padding: 20 }}>

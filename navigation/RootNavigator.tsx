@@ -7,7 +7,6 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import NamesScreen from "@/screens/NamesScreen";
 import CommentScreen from "@/screens/CommentScreen";
 import PostDetailScreen from "@/screens/PostDetailScreen";
-import LiveStreamScreen from "@/screens/LiveStreamScreen";
 import InputScreen from "@/screens/InputScreen";
 import StatusInput from "@/screens/StatusInput";
 import EditProfile from "@/screens/EditProfile";
@@ -16,6 +15,8 @@ import Notifications from "@/screens/Notifications";
 import Privacy from "@/screens/Privacy";
 import AboutScreen from "@/screens/AboutScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
+import LiveStreamScreen from "@/screens/LiveStreamScreen";
+import SplashScreen from "@/screens/SplashScreen";
 
 const RootNavigator = () => {
   const Stack = createNativeStackNavigator();
@@ -55,9 +56,12 @@ const RootNavigator = () => {
       )}
 
       {/* Secondary screens */}
+      <Stack.Screen name="SplashScreen" component={SplashScreen} />
+
       <Stack.Screen name="Comments" component={CommentScreen} />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       <Stack.Screen name="GoLive" component={LiveStreamScreen} />
+
       <Stack.Screen name="Input" component={InputScreen} />
       <Stack.Screen name="StatusInput" component={StatusInput} />
       <Stack.Screen name="EditProfile" component={EditProfile} />

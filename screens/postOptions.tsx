@@ -6,7 +6,9 @@ import {
   Modal,
   StyleSheet,
   Pressable,
+  Share,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import {
   Feather,
   MaterialIcons,
@@ -21,6 +23,8 @@ import { RootStackParamList } from "@/types/navigation";
 interface PostOptionsProps {
   post: any;
   onDelete?: (postId: string) => void;
+  onUnfollow?: (userId: string) => void;
+  onReport?: (postId: string) => void;
 }
 
 type PostOptionsNavProp = NativeStackNavigationProp<
@@ -28,9 +32,16 @@ type PostOptionsNavProp = NativeStackNavigationProp<
   "PostDetail"
 >;
 
-const PostOptionsModal: React.FC<PostOptionsProps> = ({ post, onDelete }) => {
+const PostOptionsModal: React.FC<PostOptionsProps> = ({
+  post,
+  onDelete,
+  onUnfollow,
+  onReport,
+}) => {
   const navigation = useNavigation<PostOptionsNavProp>();
   const [visible, setVisible] = useState(false);
+
+  const postLink = `http://192.168.100.4:3000/api/posts/${post._id}`;
 
   const options = [
     {
@@ -60,26 +71,31 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({ post, onDelete }) => {
     },
   ];
 
-  const handleOption = (option: string) => {
+  const handleOption = async (option: string) => {
     setVisible(false);
     switch (option) {
       case "Report":
-        console.log("Reported post", post._id);
+        onReport?.(post._id);
         break;
       case "Delete":
-        if (onDelete) onDelete(post._id);
+        onDelete?.(post._id);
         break;
       case "Unfollow":
-        console.log("Unfollowed user", post.userId);
+        onUnfollow?.(post.userId);
         break;
       case "Go to Post":
         navigation.navigate("PostDetail", { post });
         break;
       case "Share Link":
-        console.log("Share link tapped");
+        try {
+          await Share.share({ message: postLink });
+        } catch (error) {
+          console.error("Error sharing:", error);
+        }
         break;
       case "Copy Link":
-        console.log("Copied link to clipboard");
+        await Clipboard.setStringAsync(postLink);
+        console.log("Link copied:", postLink);
         break;
     }
   };

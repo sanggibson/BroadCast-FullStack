@@ -10,16 +10,20 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp, useUser } from "@clerk/clerk-expo";
 // import { LockIcon, Mail } from "lucide-react-native";
 import axios from "axios";
 import { useUserOnboarding } from "@/contexts/UserOnBoardingContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GoogleSignIn from "@/components/GoogleSignIn";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/types/navigation";
 // import { useUserOnboarding } from "../contexts/UserOnBoardingContext";
 
 const SignUpScreen = () => {
-  const navigation = useNavigation();
+const navigation =
+  useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const { isLoaded, signUp, setActive } = useSignUp();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +31,7 @@ const SignUpScreen = () => {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { user, isSignedIn} = useUser();
 
 
   const onSignUpPress = async () => {
@@ -51,7 +56,6 @@ const SignUpScreen = () => {
 
 const onVerifyPress = async () => {
   if (!isLoaded || loading) return;
-
   setLoading(true);
 
   try {
@@ -60,25 +64,23 @@ const onVerifyPress = async () => {
     });
 
     if (signUpAttempt.status === "complete") {
-      // ✅ Save Clerk session
       await setActive({ session: signUpAttempt.createdSessionId });
 
-      // ✅ Fetch the user
-      const { createdUserId } = signUpAttempt;
-      const currentUser = await clerk.user?.getUser(createdUserId);
+      // ✅ Wait for Clerk to refresh the user
+      let retries = 0;
+      let currentUser = user;
+      while ((!currentUser || !currentUser.id) && retries < 5) {
+        await new Promise((res) => setTimeout(res, 500));
+        currentUser = useUser().user;
+        retries++;
+      }
 
-      // 🔹 Check Clerk metadata flags
       const hasNames = currentUser?.unsafeMetadata?.hasNames;
       const hasLocation = currentUser?.unsafeMetadata?.hasLocation;
 
-      // 🔹 Navigate based on missing data
-      if (!hasNames) {
-        navigation.replace("Name");
-      } else if (!hasLocation) {
-        navigation.replace("Location");
-      } else {
-        navigation.replace("Drawer");
-      }
+      if (!hasNames) navigation.replace("NamesScreen");
+      else if (!hasLocation) navigation.replace("Location");
+      else navigation.replace("Drawer");
     }
   } catch (err: any) {
     console.log("Verification error", err);
@@ -87,6 +89,7 @@ const onVerifyPress = async () => {
     setLoading(false);
   }
 };
+
 
 
 

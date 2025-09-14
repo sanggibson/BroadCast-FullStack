@@ -17,6 +17,7 @@ import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import { useLevel } from "@/context/LevelContext";
+import moment from "moment";
 
 interface Comment {
   _id: string;
@@ -261,7 +262,14 @@ const CommentsScreen = () => {
             >
               <View style={[styles.commentRow, { marginLeft: 20 }]}>
                 <Text style={styles.commentUser}>{reply.userName}: </Text>
-                <Text className="text-red-600" style={{width: 300}} numberOfLines={3} ellipsizeMode="tail">{reply.text}</Text>
+                <Text
+                  className="text-red-600"
+                  style={{ width: 300 }}
+                  numberOfLines={3}
+                  ellipsizeMode="tail"
+                >
+                  {reply.text}
+                </Text>
                 <View
                   style={{
                     flexDirection: "row",
@@ -286,7 +294,6 @@ const CommentsScreen = () => {
     );
   };
 
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <KeyboardAvoidingView
@@ -297,7 +304,30 @@ const CommentsScreen = () => {
         {/* Post header */}
         <View style={styles.postHeader}>
           <Image source={{ uri: post.userImg }} style={styles.userImg} />
-          <Text style={styles.userName}>{post.userName}</Text>
+          <View className="ml-2 flex-row items-center gap-3">
+            <View>
+              <Text style={{ fontWeight: "bold" }}>{post.firstName}</Text>
+              <Text className="text-sm text-gray-400">@{post.nickName}</Text>
+            </View>
+
+            <View
+              style={{
+                backgroundColor: "#f5f5f5",
+                borderRadius: 16,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                marginLeft: "auto",
+                shadowColor: "#000",
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+                elevation: 1,
+              }}
+            >
+              <Text style={{ color: "#555", fontSize: 12, fontWeight: "500" }}>
+                {moment(post.createdAt).fromNow()}
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={{ marginLeft: "auto" }}
@@ -356,7 +386,7 @@ const CommentsScreen = () => {
             !loading ? (
               <View style={{ padding: 20, alignItems: "center" }}>
                 <Text className="font-bold text-2xl">
-                  No casts available for {currentLevel?.value}
+                  No comments available for {currentLevel?.value}
                 </Text>
               </View>
             ) : null

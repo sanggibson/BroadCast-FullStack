@@ -1,24 +1,34 @@
-import React, { useEffect } from "react";
-import { View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Alert } from "react-native";
 import { FloatingAction } from "react-native-floating-action";
 import { Feather, Ionicons, FontAwesome5, AntDesign } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useLevel } from "@/context/LevelContext";
-import { useUser } from "@clerk/clerk-expo"; // To get logged-in user
+import { useUser } from "@clerk/clerk-expo";
 import PostScreen from "./PostScreen";
+import { RootStackParamList } from "@/types/navigation";
 
-const LevelScreen = () => {
-  const navigation = useNavigation();
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "GoLive"
+>;
+
+const LevelScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const { currentLevel, setCurrentLevel, userDetails, refreshUserDetails } =
     useLevel();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser(); // ✅ use isLoaded to check Clerk user
 
-  // Fetch user details when screen mounts
+  const [userReady, setUserReady] = useState(false);
+
+  // Wait for Clerk user to load
   useEffect(() => {
-    if (user?.id) {
-      refreshUserDetails(user.id); // user.id = clerkId
+    if (isLoaded && user?.id && user?.firstName) {
+      setUserReady(true);
+      refreshUserDetails();
     }
-  }, [user]);
+  }, [isLoaded, user]);
 
   const actions = [
     {
@@ -58,7 +68,7 @@ const LevelScreen = () => {
     },
   ];
 
-  const handleActionPress = (name: string) => {
+  const handleActionPress = (name?: string) => {
     switch (name) {
       case "home":
         setCurrentLevel({ type: "home", value: "home" });
@@ -76,7 +86,14 @@ const LevelScreen = () => {
         setCurrentLevel({ type: "ward", value: userDetails?.ward });
         break;
       case "GoLive":
-        navigation.navigate("GoLive"); // Make sure this screen exists
+        if (user?.id && user?.firstName) {
+          navigation.navigate("GoLive", {
+            userId: user.id, // ✅ now TypeScript knows it's a string
+            username: user.firstName,
+          });
+        } else {
+          alert("User not loaded yet. Please wait a moment.");
+        }
         break;
     }
   };
@@ -91,7 +108,7 @@ const LevelScreen = () => {
         color="#1F2937"
         overlayColor="rgba(0,0,0,0.7)"
         floatingIcon={<Feather name="more-vertical" size={24} color="#fff" />}
-        distanceToEdge={{ vertical: 90, horizontal: 20 }} // ⬅️ pushed higher
+        distanceToEdge={{ vertical: 100, horizontal: 10 }}
       />
     </View>
   );

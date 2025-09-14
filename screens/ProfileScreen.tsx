@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,19 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/types/navigation";
 import { useLevel } from "@/context/LevelContext";
+import axios from "axios";
+import { VideoView, useVideoPlayer } from "expo-video";
+import VerifyButton from "@/components/VerifyButton";
+import { useStripe } from "@stripe/stripe-react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -22,68 +28,183 @@ type NavigationProp = NativeStackNavigationProp<
   "EditProfile"
 >;
 
-// Dummy Data
-const userPosts = [
-  {
-    id: "1",
-    image: "https://images.unsplash.com/photo-1580894894513-541f1a64d1da?w=600",
-  },
-  {
-    id: "2",
-    image: "https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?w=600",
-  },
-  {
-    id: "3",
-    image: "https://images.unsplash.com/photo-1606813909355-1389a7981c6b?w=600",
-  },
-  {
-    id: "4",
-    image: "https://images.unsplash.com/photo-1612817159949-0a1d9d14bcbb?w=600",
-  },
-];
-
-const followersData = [
-  {
-    id: "1",
-    name: "Alice",
-    avatar: "https://randomuser.me/api/portraits/women/1.jpg",
-  },
-  {
-    id: "2",
-    name: "Bob",
-    avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-  },
-  {
-    id: "3",
-    name: "Charlie",
-    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
-  },
-];
-
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { userDetails } = useLevel();
-  const [tab, setTab] = useState<"Posts" | "Followers" | "Following">("Posts");
-  const [followers, setFollowers] = useState(followersData);
-  const [followingIds, setFollowingIds] = useState<string[]>(["2"]); // currently following Bob
+  const { userDetails, currentLevel, refreshUserDetails } = useLevel();
 
-  const toggleFollow = (userId: string) => {
-    if (followingIds.includes(userId)) {
-      setFollowingIds(followingIds.filter((id) => id !== userId));
-    } else {
-      setFollowingIds([...followingIds, userId]);
+  const [tab, setTab] = useState<"Posts" | "Followers" | "Following">("Posts");
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+    const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+    const handleCheckout = async () => {
+      try {
+        const response = await fetch(
+          "http://192.168.100.4:3000/api/stripe/create-payment-intent",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: 500, // e.g. 500 KES
+              currency: "kes", // ✅ KES for Kenya
+            }),
+          }
+        );
+
+        const { clientSecret, error } = await response.json();
+        if (error || !clientSecret) {
+          Alert.alert("Error", error || "No client secret returned");
+          return;
+        }
+
+        const init = await initPaymentSheet({
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: "Broadcast App",
+          defaultBillingDetails: {
+            name: "Customer",
+            email: "customer@example.com",
+          },
+        });
+
+        if (init.error) {
+          Alert.alert("Error", init.error.message);
+          return;
+        }
+
+        const payment = await presentPaymentSheet();
+
+        if (payment.error) {
+          Alert.alert("Payment failed", payment.error.message);
+        } else {
+          Alert.alert("Success", "Thanks for buying me coffee ☕ with M-Pesa!");
+        }
+      } catch (err: any) {
+        console.error("Checkout error:", err);
+        Alert.alert("Checkout error", err.message);
+      }
+    };
+
+  
+  const [followers] = useState([
+    {
+      id: "1",
+      name: "Alice",
+      avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+    },
+    {
+      id: "2",
+      name: "Bob",
+      avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+    },
+    {
+      id: "3",
+      name: "Charlie",
+      avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    },
+  ]);
+  const [followingIds, setFollowingIds] = useState<string[]>(["2"]);
+
+  // ---------------------- Fetch posts ----------------------
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const fetchPosts = useCallback(async () => {
+    if (!userDetails?.clerkId || !hasMore) return;
+
+    setLoadingPosts(true);
+    try {
+      let url = `http://192.168.100.4:3000/api/posts?userId=${userDetails.clerkId}&page=${page}&limit=10`;
+      if (currentLevel.type !== "home") {
+        url += `&levelType=${currentLevel.type}&levelValue=${currentLevel.value}`;
+      }
+
+      const res = await axios.get(url);
+      if (res.data.length < 10) setHasMore(false); // no more posts
+      setPosts((prev) => [...prev, ...res.data]); // append new posts
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+    } finally {
+      setLoadingPosts(false);
     }
+  }, [userDetails?.clerkId, currentLevel, page, hasMore]);
+
+  // Fetch posts when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [fetchPosts])
+  );
+
+  // Refresh userDetails once on mount
+  useEffect(() => {
+    refreshUserDetails();
+  }, []);
+
+  // ---------------------- Flatten media for rendering ----------------------
+const flatMediaItems = useMemo(() => {
+  return posts.flatMap((post) => {
+    if (!post.media) return [];
+    return post.media.map((url: string) => ({
+      _id: post._id + "_" + url,
+      url,
+      type: url.endsWith(".mp4") ? "video" : "image",
+    }));
+  });
+}, [posts]);
+
+
+  const mediaCount = flatMediaItems.length;
+
+  const POST_MARGIN = 4;
+  const NUM_COLUMNS = 3;
+  const POST_WIDTH = (width - POST_MARGIN * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+  const PostItem = ({
+    item,
+  }: {
+    item: { _id: string; type: string; url: string };
+  }) => {
+    const mediaStyle = {
+      width: POST_WIDTH,
+      height: POST_WIDTH, // square
+      borderRadius: 8,
+    };
+
+    if (item.type === "image") {
+      return (
+        <View style={{ margin: POST_MARGIN / 2 }}>
+          <Image source={{ uri: item.url }} style={mediaStyle} />
+        </View>
+      );
+    }
+
+ const player = useVideoPlayer(item.url, (p) => {
+   p.loop = true;
+   p.play();
+ });
+
+
+    return (
+      <View style={{ margin: POST_MARGIN / 2 }}>
+        <VideoView
+          style={mediaStyle}
+          player={player}
+          allowsFullscreen
+          allowsPictureInPicture
+        />
+      </View>
+    );
   };
 
-  const renderPost = ({ item }: { item: (typeof userPosts)[0] }) => (
-    <View style={styles.postCard}>
-      <Image source={{ uri: item.image }} style={styles.postImage} />
-    </View>
-  );
+  const toggleFollow = (userId: string) => {
+    setFollowingIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
 
   const renderFollower = ({ item }: { item: (typeof followers)[0] }) => {
     const isFollowing = followingIds.includes(item.id);
-
     return (
       <View style={styles.followerCard}>
         <Image source={{ uri: item.avatar }} style={styles.followerAvatar} />
@@ -123,16 +244,59 @@ const ProfileScreen = () => {
       </View>
 
       {/* User Info */}
-      <View className="items-center mt-4 mb-2 flex-row px-4 space-x-6 justify-center">
-        <Image source={{ uri: userDetails?.image }} style={styles.avatar} />
-        <View>
-          <Text style={styles.name}>{userDetails?.firstName}</Text>
-        <Text style={styles.bio}>@{userDetails?.nickName}</Text>
+      <View style={{ paddingHorizontal: 16 }}>
+        <View className="flex-row items-center mb-4 px-4">
+          <Image
+            source={{ uri: userDetails?.image }}
+            className="w-20 h-20 rounded-full border border-gray-300"
+          />
+          <View className="flex-1 ml-3">
+            <Text className="text-lg font-bold text-gray-900">
+              {userDetails?.firstName}
+            </Text>
+            <Text className="text-sm text-gray-500">
+              @{userDetails?.nickName}
+            </Text>
+          </View>
+          {/* <TouchableOpacity
+            className="flex-row items-center bg-white border border-gray-300 rounded-full px-4 py-2 shadow-md"
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <Text className="text-sm font-medium text-gray-700">
+              Verify Account
+            </Text>
+          </TouchableOpacity> */}
+
+          <VerifyButton />
         </View>
-        
-      </View>
-      <View className="items-center border border-gray-300 rounded-lg px-4 py-1 self-center mb-4 bg-gray-400 shadow-sm">
-        <Text className="text-lg font-bold text-white">Edit</Text>
+
+        <View className="flex-row justify-center space-x-3 gap-5">
+          {/* Edit Profile */}
+          <TouchableOpacity
+            className="flex-1 flex-row items-center justify-center border border-gray-300 rounded-lg px-4 py-2 bg-white"
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <Text className="text-base">✏️</Text>
+            <Text className="ml-2 text-sm font-medium text-gray-700">
+              Edit Profile
+            </Text>
+          </TouchableOpacity>
+
+          {/* Buy Me Coffee */}
+          <TouchableOpacity
+            className="flex-row items-center justify-center border border-yellow-400 rounded-lg px-4 py-2 bg-yellow-50"
+            activeOpacity={0.7}
+            onPress={handleCheckout}
+            // disabled={loading}
+          >
+            <Text className="text-base">☕</Text>
+            <Text className="ml-2 text-sm font-medium text-yellow-800">
+              Buy me Coffee
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Stats */}
@@ -141,7 +305,7 @@ const ProfileScreen = () => {
           style={styles.statBox}
           onPress={() => setTab("Posts")}
         >
-          <Text style={styles.statNumber}>{userPosts.length}</Text>
+          <Text style={styles.statNumber}>{mediaCount}</Text>
           <Text style={styles.statLabel}>Posts</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -160,40 +324,47 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Active Tab Indicator */}
+      {/* Tab Indicator */}
       <View style={styles.tabIndicatorRow}>
         {["Posts", "Followers", "Following"].map((t) => (
           <View
             key={t}
             style={[
               styles.tabIndicator,
-              { backgroundColor: tab === t ? "#4caf50" : "transparent" },
+              { backgroundColor: tab === t ? "blue" : "transparent" },
             ]}
           />
         ))}
       </View>
 
-      {/* Conditional Content */}
-      {tab === "Posts" && (
-        <FlatList
-          data={userPosts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={{ paddingBottom: 50 }}
-        />
-      )}
-
-      {tab === "Followers" && (
+      {/* Tab Content */}
+      {tab === "Posts" ? (
+        loadingPosts ? (
+          <ActivityIndicator
+            size="large"
+            color="blue"
+            style={{ marginTop: 50 }}
+          />
+        ) : (
+          <FlatList
+            data={flatMediaItems}
+            renderItem={({ item }) => <PostItem item={item} />}
+            keyExtractor={(item) => item._id}
+            numColumns={NUM_COLUMNS}
+            contentContainerStyle={{ padding: POST_MARGIN }}
+            initialNumToRender={6} // only render first 6 items
+            maxToRenderPerBatch={6}
+            windowSize={5}
+          />
+        )
+      ) : tab === "Followers" ? (
         <FlatList
           data={followers}
           renderItem={renderFollower}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 50 }}
         />
-      )}
-
-      {tab === "Following" && (
+      ) : (
         <FlatList
           data={followers.filter((f) => followingIds.includes(f.id))}
           renderItem={renderFollower}
@@ -213,12 +384,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  title: { fontSize: 22, fontWeight: "bold", textAlign: "center" },
-  avatar: { width: 80, height: 80, borderRadius: 50, marginBottom: 8 },
-  name: { fontSize: 20, fontWeight: "bold", color: "#222" },
-  bio: { fontSize: 14, color: "#666", textAlign: "center", marginTop: 4 },
+  title: { fontSize: 22, fontWeight: "bold" },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -227,12 +396,13 @@ const styles = StyleSheet.create({
   statBox: { alignItems: "center" },
   statNumber: { fontSize: 18, fontWeight: "bold", color: "#222" },
   statLabel: { fontSize: 13, color: "#666", fontWeight: "600" },
-  tabIndicatorRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 10,
+  tabIndicatorRow: { flexDirection: "row", justifyContent: "space-around" },
+  tabIndicator: {
+    width: 100,
+    height: 3,
+    borderRadius: 10,
+    marginHorizontal: 2,
   },
-  tabIndicator: { width: 60, height: 3, borderRadius: 2, marginHorizontal: 2 },
   postCard: {
     flex: 1,
     margin: 8,
@@ -241,7 +411,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     elevation: 2,
   },
-  postImage: { width: (width - 48) / 2, height: 140, borderRadius: 12 },
   followerCard: {
     flexDirection: "row",
     alignItems: "center",

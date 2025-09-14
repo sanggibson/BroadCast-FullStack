@@ -9,7 +9,9 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { RootStackParamList } from "@/types/navigation";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 const { width, height } = Dimensions.get("window");
 
@@ -27,9 +29,15 @@ interface RouteParams {
   userStatuses: Status[];
 }
 
+type StatusViewRouteProp = RouteProp<RootStackParamList, "StatusView">;
+type StatusViewNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "StatusView"
+>;
+
 const StatusViewScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+ const route = useRoute<StatusViewRouteProp>();
+ const navigation = useNavigation<StatusViewNavigationProp>();
   const { userStatuses } = route.params as RouteParams;
 
   const [currentIndex, setCurrentIndex] = useState(0);

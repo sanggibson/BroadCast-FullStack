@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,56 +6,77 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList, Product } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import axios from "axios";
 
 type MarketNavProp = NativeStackNavigationProp<RootStackParamList, "Market">;
 
-const sampleProducts: Product[] = [
-  {
-    id: "1",
-    name: "Wireless Headphones",
-    price: 3500,
-    image: "https://images.unsplash.com/photo-1580894894513-541f1a64d1da?w=600",
-  },
-  {
-    id: "2",
-    name: "Smart Watch",
-    price: 5200,
-    image: "https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?w=600",
-  },
-  {
-    id: "3",
-    name: "Running Shoes",
-    price: 4500,
-    image: "https://images.unsplash.com/photo-1606813909355-1389a7981c6b?w=600",
-  },
-  {
-    id: "4",
-    name: "Backpack",
-    price: 2800,
-    image: "https://images.unsplash.com/photo-1612817159949-0a1d9d14bcbb?w=600",
-  },
-];
-
 const MarketScreen = () => {
   const navigation = useNavigation<MarketNavProp>();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Fetch all products
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+     const res = await axios.get<Product[]>(
+       "http://192.168.100.4:3000/api/products"
+     );
+     setProducts(res.data);
+
+      // Extract unique categories from products
+    const uniqueCategories = Array.from(
+      new Set(res.data.map((p) => p.category))
+    );
+    setCategories(uniqueCategories);
+    } catch (err) {
+      console.error("Error fetching products:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProducts();
+    }, [])
+  );
+
+  // Filter products based on selected category
+  const filteredProducts = selectedCategory
+    ? products.filter((p) => p.category === selectedCategory)
+    : products;
+
+  // Filter categories based on search input
+  const filteredCategories = categories.filter((cat) =>
+    cat.toLowerCase().includes(categorySearch.toLowerCase())
+  );
 
   const renderItem = ({ item }: { item: Product }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => navigation.navigate("ProductDetail", { product: item })}
     >
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image source={{ uri: item.images[0] }} style={styles.image} />
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
-          {item.name}
+          {item.title}
         </Text>
-        <Text style={styles.price}>KES {item.price}</Text>
+        <Text style={styles.price}>
+          KES {Number(item.price).toLocaleString("en-KE")}
+        </Text>
       </View>
       <TouchableOpacity style={styles.addButton}>
         <Ionicons name="cart" size={20} color="#fff" />
@@ -65,41 +86,149 @@ const MarketScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View className="flex-row items-center justify-between">
-        <Text></Text>
-        <Text style={styles.header}>Marketplace</Text>
-        <TouchableOpacity
-          className="bg-blue-500 rounded-lg px-4 py-2"
-          onPress={() => navigation.navigate("Sell")}
-        >
-          <Text className="font-bold text-xl text-white">Sell</Text>
-        </TouchableOpacity>
-      </View>
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color="#4caf50"
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        />
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View>
+              {/* Header */}
+              <View style={styles.headerRow}>
+                <Text></Text>
+                <Text style={styles.header}>Marketplace</Text>
+                <TouchableOpacity
+                  style={styles.sellButton}
+                  onPress={() => navigation.navigate("Sell")}
+                >
+                  <Text style={styles.sellText}>Sell</Text>
+                </TouchableOpacity>
+              </View>
 
-      <FlatList
-        data={sampleProducts}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+              {/* Category Search */}
+              <View style={styles.categorySearchContainer}>
+                <Ionicons name="search" size={20} color="gray" />
+                <TextInput
+                  placeholder="Search categories..."
+                  value={categorySearch}
+                  onChangeText={setCategorySearch}
+                  style={styles.categorySearchInput}
+                />
+                {categorySearch ? (
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color="gray"
+                    onPress={() => setCategorySearch("")}
+                  />
+                ) : null}
+              </View>
+
+              {/* Categories */}
+              {filteredCategories.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginVertical: 10 }}
+                  contentContainerStyle={{ paddingHorizontal: 4 }}
+                >
+                  {/* All category */}
+                  <TouchableOpacity
+                    style={[
+                      styles.categoryButton,
+                      selectedCategory === null && styles.categorySelected,
+                    ]}
+                    onPress={() => setSelectedCategory(null)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        selectedCategory === null &&
+                          styles.categoryTextSelected,
+                      ]}
+                    >
+                      All
+                    </Text>
+                  </TouchableOpacity>
+
+                  {filteredCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.categoryButton,
+                        selectedCategory === cat && styles.categorySelected,
+                      ]}
+                      onPress={() =>
+                        setSelectedCategory(
+                          cat === selectedCategory ? null : cat
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          selectedCategory === cat &&
+                            styles.categoryTextSelected,
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            <Text
+              style={{
+                textAlign: "center",
+                color: "#888",
+                marginTop: 50,
+                fontSize: 16,
+              }}
+            >
+              No products available.
+            </Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
 
 export default MarketScreen;
 
-// Styles same as before
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9f9f9", paddingHorizontal: 12 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+  },
   header: {
     fontSize: 22,
     fontWeight: "bold",
-    paddingVertical: 16,
     textAlign: "center",
     color: "#222",
   },
+  sellButton: {
+    backgroundColor: "#4caf50",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  sellText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   list: { paddingBottom: 20 },
   card: {
     flex: 1,
@@ -124,5 +253,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#4caf50",
     borderRadius: 20,
     padding: 6,
+  },
+  categoryButton: {
+    backgroundColor: "#eee",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  categorySelected: { backgroundColor: "#4caf50" },
+  categoryText: { color: "#333", fontWeight: "500" },
+  categoryTextSelected: { color: "#fff" },
+  categorySearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
+  },
+  categorySearchInput: {
+    flex: 1,
+    paddingHorizontal: 8,
+    height: 36,
   },
 });

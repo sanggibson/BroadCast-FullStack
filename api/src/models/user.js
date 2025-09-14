@@ -1,4 +1,4 @@
-// models/User.js
+// models/user.js
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
@@ -10,12 +10,16 @@ const userSchema = new mongoose.Schema(
     nickName: { type: String, unique: true },
     image: { type: String },
 
-    // 🟢 New fields for IEBC Location
+    // 🟢 IEBC Location
     county: { type: String },
     constituency: { type: String },
     ward: { type: String },
 
-    
+    isVerified: { type: Boolean, default: false },
+    verifyToken: { type: String },
+    verifyTokenExpiry: { type: Date },
+
+    provider: { type: String, default: "clerk" }, // ✅ default provider
   },
   {
     timestamps: true,
@@ -25,3 +29,4 @@ const userSchema = new mongoose.Schema(
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 module.exports = User;
+

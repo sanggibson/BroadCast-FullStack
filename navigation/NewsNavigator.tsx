@@ -1,12 +1,20 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import { View, Text } from "react-native";
+import React from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import NewsScreen from "@/screens/NewsScreen";
 
 const NewsNavigator = () => {
-  return (
-    <View>
-      <Text>NewsNavigator</Text>
-    </View>
-  )
-}
+  const Stack = createNativeStackNavigator();
 
-export default NewsNavigator
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="NewsScreen"
+        component={NewsScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+export default NewsNavigator;

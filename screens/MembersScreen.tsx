@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Sample data
 const initialMembers = [
@@ -48,7 +49,19 @@ const MembersScreen = () => {
   };
 
   const renderMember = ({ item }: any) => (
-    <View style={styles.card}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#fff",
+        padding: 12,
+        borderRadius: 14,
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+      }}
+    >
       {/* Left side: avatar + text */}
       <View style={styles.userInfo}>
         <Image source={{ uri: item.avatar }} style={styles.avatar} />
@@ -67,9 +80,7 @@ const MembersScreen = () => {
         onPress={() => toggleFollow(item.id)}
       >
         <Text
-          style={[
-            item.isFollowing ? styles.unfollowText : styles.followText,
-          ]}
+          style={[item.isFollowing ? styles.unfollowText : styles.followText]}
         >
           {item.isFollowing ? "Unfollow" : "Follow"}
         </Text>
@@ -78,9 +89,10 @@ const MembersScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <Text className="text-xl text-center font-bold mt-15">Members ({members?.length})</Text>
-
+    <SafeAreaView style={styles.container}>
+      <Text className="text-xl text-center font-bold mb-15">
+        Members ({members?.length})
+      </Text>
       <FlatList
         data={members}
         renderItem={renderMember}
@@ -88,7 +100,7 @@ const MembersScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -100,18 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
     padding: 16,
   },
- 
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
+
   userInfo: {
     flexDirection: "row",
     alignItems: "center",

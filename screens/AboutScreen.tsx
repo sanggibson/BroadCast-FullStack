@@ -53,9 +53,9 @@ const AboutScreen = () => {
         </Text>
         <Text
           style={styles.link}
-          onPress={() => Linking.openURL("https://broadcastapp.com")}
+          onPress={() => Linking.openURL("https://broadcastKe.com")}
         >
-          www.broadcastapp.com
+          www.broadcastKe.com
         </Text>
       </View>
 

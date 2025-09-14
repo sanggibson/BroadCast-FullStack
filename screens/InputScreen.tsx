@@ -97,48 +97,85 @@ const InputScreen = () => {
   };
 
   // Handle Post
-  const handlePost = async () => {
-    setPostError("");
+  // const handlePost = async () => {
+  //   setPostError("");
 
-    if (!user) {
-      setPostError("You must be signed in to post.");
-      return;
-    }
+  //   if (!user) {
+  //     setPostError("You must be signed in to post.");
+  //     return;
+  //   }
 
-    if (!cast && media.length === 0) {
-      setPostError("Please add a caption or upload media before posting.");
-      return;
-    }
+  //   if (!cast && media.length === 0) {
+  //     setPostError("Please add a caption or upload media before posting.");
+  //     return;
+  //   }
 
-    const uploadedUrls: string[] = [];
-    for (let item of media) {
-      const url = await uploadToCloudinary(item.uri, item.type);
-      if (url) uploadedUrls.push(url);
-    }
+  //   const uploadedUrls: string[] = [];
+  //   for (let item of media) {
+  //     const url = await uploadToCloudinary(item.uri, item.type);
+  //     if (url) uploadedUrls.push(url);
+  //   }
 
-    try {
-      const res = await axios.post("http://192.168.100.4:3000/api/posts", {
-        userId: user.id,
-        userName: user.username || `${user.firstName} ${user.lastName}`,
-        firstName: user.firstName,
-        nickname: user.publicMetadata?.nickname || "",
-        caption: cast,
-        media: uploadedUrls,
+  //   try {
+  //     const res = await axios.post("http://192.168.100.4:3000/api/posts", {
+  //       userId: user.id,
+  //       userName: user.username || `${user.firstName} ${user.lastName}`,
+  //       firstName: user.firstName,
+  //       nickname: user.publicMetadata?.nickname || "",
+  //       caption: cast,
+  //       media: uploadedUrls,
 
-        // ✅ Attach current level here
-        levelType: currentLevel.type, // e.g., "county", "ward", "home"
-        levelValue: currentLevel.value, // e.g., "Nairobi", "Westlands"
-      });
+  //       // ✅ Attach current level here
+  //       levelType: currentLevel.type, // e.g., "county", "ward", "home"
+  //       levelValue: currentLevel.value, // e.g., "Nairobi", "Westlands"
+  //     });
 
-      console.log("✅ Post saved:", res.data);
-      setCast("");
-      setMedia([]);
-      navigation.goBack();
-    } catch (err: any) {
-      console.error("❌ Post Error:", err.response?.data || err.message);
-      setPostError("Something went wrong while posting.");
-    }
-  };
+  //     console.log("✅ Post saved:", res.data);
+  //     setCast("");
+  //     setMedia([]);
+  //     navigation.goBack();
+  //   } catch (err: any) {
+  //     console.error("❌ Post Error:", err.response?.data || err.message);
+  //     setPostError("Something went wrong while posting.");
+  //   }
+  // };
+const handlePost = async () => {
+  setPostError("");
+
+  if (!user) {
+    setPostError("You must be signed in to post.");
+    return;
+  }
+
+  if (!cast && media.length === 0) {
+    setPostError("Please add a caption or upload media before posting.");
+    return;
+  }
+
+  const uploadedUrls: string[] = [];
+  for (let item of media) {
+    const url = await uploadToCloudinary(item.uri, item.type);
+    if (url) uploadedUrls.push(url);
+  }
+
+  try {
+    const res = await axios.post("http://192.168.100.4:3000/api/posts", {
+      userId: user.id, // Clerk ID only
+      caption: cast,
+      media: uploadedUrls,
+      levelType: currentLevel.type, // e.g., "county", "ward", "home"
+      levelValue: currentLevel.value, // e.g., "Nairobi", "Westlands"
+    });
+
+    console.log("✅ Post saved:", res.data);
+    setCast("");
+    setMedia([]);
+    navigation.goBack();
+  } catch (err: any) {
+    console.error("❌ Post Error:", err.response?.data || err.message);
+    setPostError("Something went wrong while posting.");
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>

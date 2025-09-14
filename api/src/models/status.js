@@ -1,3 +1,4 @@
+// models/status.js
 const mongoose = require("mongoose");
 
 const statusSchema = new mongoose.Schema(
@@ -7,12 +8,13 @@ const statusSchema = new mongoose.Schema(
     firstName: { type: String },
     nickname: { type: String },
     caption: { type: String },
-    media: [{ type: String }], // array of image/video URLs
-    likes: [{ type: String }], // optional for reactions
+    media: [{ type: String }],
+    likes: [{ type: String }],
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Status", statusSchema);
+const Status = mongoose.models.Status || mongoose.model("Status", statusSchema);
 
+module.exports = Status;
