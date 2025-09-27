@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState } from "react";
-
 type UserOnboarding = {
   firstName: string;
   lastName?: string;
   nickName?: string;
   image: string;
   sessionId: string;
+  companyName: string; // ✅ add companyName
+  setCompanyName: (name: string) => void; // ✅ add setter
   setSessionId: (name: string) => void;
   setFirstName: (name: string) => void;
   setLastName: (name: string) => void;
@@ -25,6 +26,7 @@ export const UserOnboardingProvider = ({
   const [nickName, setNickName] = useState("");
   const [image, setImage] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [companyName, setCompanyName] = useState(""); // ✅ new state
 
   return (
     <UserOnboardingContext.Provider
@@ -33,12 +35,14 @@ export const UserOnboardingProvider = ({
         lastName,
         nickName,
         image,
+        sessionId,
+        companyName, // ✅ provide
+        setCompanyName, // ✅ provide setter
         setFirstName,
         setLastName,
         setNickName,
-        sessionId,
         setSessionId,
-        setImage
+        setImage,
       }}
     >
       {children}

@@ -1,16 +1,17 @@
-// models/comment.js
 const mongoose = require("mongoose");
-
 const { Schema } = mongoose;
 
 // ------------------- Reply Schema -------------------
-const replySchema = new Schema({
-  userId: { type: String, required: true }, // Clerk ID
-  userName: { type: String, required: true },
-  text: { type: String, required: true },
-  likes: { type: [String], default: [] },
-  createdAt: { type: Date, default: Date.now },
-});
+const replySchema = new Schema(
+  {
+    userId: { type: String, required: true }, // Clerk ID
+    userName: { type: String, required: true },
+    text: { type: String, required: true },
+    likes: { type: [String], default: [] },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: true } // 👈 ensures replies have unique _id
+);
 
 // ------------------- Comment Schema -------------------
 const commentSchema = new Schema(

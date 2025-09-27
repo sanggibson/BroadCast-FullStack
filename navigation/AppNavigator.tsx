@@ -6,45 +6,45 @@ import HomeNavigator from "./HomeNavigator";
 import MarketNavigator from "./MarketNavigator";
 import NewsNavigator from "./NewsNavigator";
 import ProfileNavigator from "./ProfileNavigator";
-import LevelScreen from "@/screens/LevelScreen";
-import InputScreen from "@/screens/InputScreen";
+import LevelScreen from "@/screens/PostScreens/LevelScreen";
+import InputScreen from "@/screens/PostScreens/InputScreen";
 import { useLevel } from "@/context/LevelContext";
 import { useNavigation } from "@react-navigation/native";
 import { Avatar } from "react-native-paper";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/types/navigation";
+import { useUser } from "@clerk/clerk-expo";
+import { useTheme } from "@/context/ThemeContext";
 
 const Tab = createBottomTabNavigator();
 
-
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  "Input"
->;
-
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Input">;
 
 const AppNavigator: React.FC = () => {
   const { currentLevel, userDetails } = useLevel();
-  const navigation = useNavigation<NavigationProp>()
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useUser();
+  const {theme} = useTheme()
 
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          // tabBarShowLabel: false,
           tabBarStyle: {
             position: "absolute",
             height: 100,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            borderColor: "transparent",
-            backgroundColor: "#374559",
+            borderColor: theme.background,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: -3 },
             shadowOpacity: 0.1,
             shadowRadius: 3,
             elevation: 5,
+            backgroundColor: theme.background
+            // backgroundColor: "rgba(255, 255, 255, 0.8)", // ✅ semi-transparent
+            // backdropFilter: "blur(10px)", // optional, if you want a blur effect on iOS
           },
         }}
       >
@@ -94,7 +94,10 @@ const AppNavigator: React.FC = () => {
               <Avatar.Image
                 size={32}
                 source={{
-                  uri: userDetails?.image,
+                  uri:
+                    userDetails?.image && userDetails.image.trim() !== ""
+                      ? userDetails?.image
+                      : user?.imageUrl || "",
                 }}
                 style={{ borderRadius: 50 }}
               />
@@ -130,10 +133,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#1F2937",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    // shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 20,
+    borderWidth: 3,
+    borderColor: "gray"
   },
 });

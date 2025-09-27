@@ -12,7 +12,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import {
+  useNavigation,
+  useFocusEffect,
+  NavigationProp,
+} from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/types/navigation";
 import { useLevel } from "@/context/LevelContext";
@@ -20,71 +24,73 @@ import axios from "axios";
 import { VideoView, useVideoPlayer } from "expo-video";
 import VerifyButton from "@/components/VerifyButton";
 import { useStripe } from "@stripe/stripe-react-native";
+import { useUser } from "@clerk/clerk-expo";
+import { RouteProp, useRoute } from "@react-navigation/native";
+import { useTheme } from "@/context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  "EditProfile"
->;
-
 const ProfileScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userDetails, currentLevel, refreshUserDetails } = useLevel();
-
+  const { user } = useUser();
   const [tab, setTab] = useState<"Posts" | "Followers" | "Following">("Posts");
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
-    const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { theme, isDark, toggleTheme } = useTheme();
 
-    const handleCheckout = async () => {
-      try {
-        const response = await fetch(
-          "http://192.168.100.4:3000/api/stripe/create-payment-intent",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: 500, // e.g. 500 KES
-              currency: "kes", // ✅ KES for Kenya
-            }),
-          }
-        );
+  const route = useRoute<RouteProp<RootStackParamList, "ProfileScreen">>();
+  const profileUserId = route.params?.userId;
 
-        const { clientSecret, error } = await response.json();
-        if (error || !clientSecret) {
-          Alert.alert("Error", error || "No client secret returned");
-          return;
+  const handleCheckout = async () => {
+    try {
+      const response = await fetch(
+        `http://192.168.100.4:3000/api/stripe/create-payment-intent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: 500, // e.g. 500 KES
+            currency: "kes", // ✅ KES for Kenya
+          }),
         }
+      );
 
-        const init = await initPaymentSheet({
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: "Broadcast App",
-          defaultBillingDetails: {
-            name: "Customer",
-            email: "customer@example.com",
-          },
-        });
-
-        if (init.error) {
-          Alert.alert("Error", init.error.message);
-          return;
-        }
-
-        const payment = await presentPaymentSheet();
-
-        if (payment.error) {
-          Alert.alert("Payment failed", payment.error.message);
-        } else {
-          Alert.alert("Success", "Thanks for buying me coffee ☕ with M-Pesa!");
-        }
-      } catch (err: any) {
-        console.error("Checkout error:", err);
-        Alert.alert("Checkout error", err.message);
+      const { clientSecret, error } = await response.json();
+      if (error || !clientSecret) {
+        Alert.alert("Error", error || "No client secret returned");
+        return;
       }
-    };
 
-  
+      const init = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: "Broadcast App",
+        defaultBillingDetails: {
+          name: "Customer",
+          email: "customer@example.com",
+        },
+      });
+
+      if (init.error) {
+        Alert.alert("Error", init.error.message);
+        return;
+      }
+
+      const payment = await presentPaymentSheet();
+
+      if (payment.error) {
+        Alert.alert("Payment failed", payment.error.message);
+      } else {
+        Alert.alert("Success", "Thanks for buying me coffee ☕ with M-Pesa!");
+      }
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      Alert.alert("Checkout error", err.message);
+    }
+  };
+
   const [followers] = useState([
     {
       id: "1",
@@ -107,6 +113,7 @@ const ProfileScreen = () => {
   // ---------------------- Fetch posts ----------------------
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
   const fetchPosts = useCallback(async () => {
     if (!userDetails?.clerkId || !hasMore) return;
 
@@ -140,17 +147,16 @@ const ProfileScreen = () => {
   }, []);
 
   // ---------------------- Flatten media for rendering ----------------------
-const flatMediaItems = useMemo(() => {
-  return posts.flatMap((post) => {
-    if (!post.media) return [];
-    return post.media.map((url: string) => ({
-      _id: post._id + "_" + url,
-      url,
-      type: url.endsWith(".mp4") ? "video" : "image",
-    }));
-  });
-}, [posts]);
-
+  const flatMediaItems = useMemo(() => {
+    return posts.flatMap((post) => {
+      if (!post.media) return [];
+      return post.media.map((url: string) => ({
+        _id: post._id + "_" + url,
+        url,
+        type: url.endsWith(".mp4") ? "video" : "image",
+      }));
+    });
+  }, [posts]);
 
   const mediaCount = flatMediaItems.length;
 
@@ -177,11 +183,10 @@ const flatMediaItems = useMemo(() => {
       );
     }
 
- const player = useVideoPlayer(item.url, (p) => {
-   p.loop = true;
-   p.play();
- });
-
+    const player = useVideoPlayer(item.url, (p) => {
+      p.loop = true;
+      p.play();
+    });
 
     return (
       <View style={{ margin: POST_MARGIN / 2 }}>
@@ -233,40 +238,42 @@ const flatMediaItems = useMemo(() => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       {/* Header */}
       <View style={styles.headerRow}>
         <Text></Text>
-        <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("EditProfile")}>
-          <Ionicons name="settings-outline" size={24} color="#222" />
-        </TouchableOpacity>
+        <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("ChatScreen")}
+        ></TouchableOpacity>
       </View>
 
       {/* User Info */}
       <View style={{ paddingHorizontal: 16 }}>
         <View className="flex-row items-center mb-4 px-4">
           <Image
-            source={{ uri: userDetails?.image }}
+            source={{
+              uri:
+                userDetails?.image && userDetails.image.trim() !== ""
+                  ? userDetails?.image
+                  : user?.imageUrl || "",
+            }}
             className="w-20 h-20 rounded-full border border-gray-300"
           />
+
           <View className="flex-1 ml-3">
-            <Text className="text-lg font-bold text-gray-900">
+            <Text
+              className="text-lg font-bold text-gray-900"
+              style={{ color: theme.text }}
+            >
               {userDetails?.firstName}
             </Text>
             <Text className="text-sm text-gray-500">
               @{userDetails?.nickName}
             </Text>
           </View>
-          {/* <TouchableOpacity
-            className="flex-row items-center bg-white border border-gray-300 rounded-full px-4 py-2 shadow-md"
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("EditProfile")}
-          >
-            <Text className="text-sm font-medium text-gray-700">
-              Verify Account
-            </Text>
-          </TouchableOpacity> */}
 
           <VerifyButton />
         </View>
@@ -276,7 +283,7 @@ const flatMediaItems = useMemo(() => {
           <TouchableOpacity
             className="flex-1 flex-row items-center justify-center border border-gray-300 rounded-lg px-4 py-2 bg-white"
             activeOpacity={0.7}
-            onPress={() => navigation.navigate("EditProfile")}
+            onPress={() => navigation.navigate("NamesScreen")}
           >
             <Text className="text-base">✏️</Text>
             <Text className="ml-2 text-sm font-medium text-gray-700">
@@ -289,7 +296,7 @@ const flatMediaItems = useMemo(() => {
             className="flex-row items-center justify-center border border-yellow-400 rounded-lg px-4 py-2 bg-yellow-50"
             activeOpacity={0.7}
             onPress={handleCheckout}
-            // disabled={loading}
+            // style={{backgroundColor: theme.card}}
           >
             <Text className="text-base">☕</Text>
             <Text className="ml-2 text-sm font-medium text-yellow-800">
@@ -305,21 +312,27 @@ const flatMediaItems = useMemo(() => {
           style={styles.statBox}
           onPress={() => setTab("Posts")}
         >
-          <Text style={styles.statNumber}>{mediaCount}</Text>
+          <Text style={[styles.statNumber, { color: theme.subtext }]}>
+            {mediaCount}
+          </Text>
           <Text style={styles.statLabel}>Posts</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statBox}
           onPress={() => setTab("Followers")}
         >
-          <Text style={styles.statNumber}>{followers.length}</Text>
+          <Text style={[styles.statNumber, { color: theme.subtext }]}>
+            {followers.length}
+          </Text>
           <Text style={styles.statLabel}>Followers</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statBox}
           onPress={() => setTab("Following")}
         >
-          <Text style={styles.statNumber}>{followingIds.length}</Text>
+          <Text style={[styles.statNumber, { color: theme.subtext }]}>
+            {followingIds.length}
+          </Text>
           <Text style={styles.statLabel}>Following</Text>
         </TouchableOpacity>
       </View>
@@ -355,6 +368,7 @@ const flatMediaItems = useMemo(() => {
             initialNumToRender={6} // only render first 6 items
             maxToRenderPerBatch={6}
             windowSize={5}
+            contentContainerClassName="pb-40"
           />
         )
       ) : tab === "Followers" ? (

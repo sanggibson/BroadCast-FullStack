@@ -18,11 +18,12 @@ import { useLevel } from "@/context/LevelContext";
 import { useUser } from "@clerk/clerk-expo";
 
 import AppNavigator from "./AppNavigator";
-import SettingsScreen from "@/screens/SettingsScreen";
-import TrendScreen from "@/screens/TrendScreen";
-import MediaScreen from "@/screens/MediaScreen";
-import MembersScreen from "@/screens/MembersScreen";
+import SettingsScreen from "@/screens/DrawerScreens/SettingsScreen";
+import TrendScreen from "@/screens/DrawerScreens/TrendScreen";
+import MediaScreen from "@/screens/DrawerScreens/MediaScreen";
+import MembersScreen from "@/screens/DrawerScreens/MembersScreen";
 import { StreamChat } from "stream-chat";
+import { useTheme } from "@/context/ThemeContext";
 
 const client = StreamChat.getInstance(process.env.STREAM_API_KEY);
 
@@ -37,9 +38,13 @@ const Drawer = createDrawerNavigator();
 const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
   const { user } = useUser();
   const { userDetails, isLoadingUser } = useLevel();
+  const { theme } = useTheme();
 
   return (
-    <DrawerContentScrollView {...props}>
+    <DrawerContentScrollView
+      {...props}
+      contentContainerStyle={{ backgroundColor: theme.card }}
+    >
       <Pressable
         onPress={() => props.navigation.navigate("ProfileScreen")}
         style={{
@@ -56,13 +61,15 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
         <View style={{ marginLeft: 12, flex: 1 }}>
           {isLoadingUser ? (
             <>
-              <ActivityIndicator size="small" color="gray" />
-              <Text style={{ fontSize: 14, color: "gray" }}>Loading...</Text>
+              <ActivityIndicator size="small" color={theme.text} />
+              <Text style={{ fontSize: 14, color: theme.text }}>
+                Loading...
+              </Text>
             </>
           ) : (
             <>
               <Text
-                style={{ fontWeight: "bold", fontSize: 16 }}
+                style={{ fontWeight: "bold", fontSize: 16, color: theme.text }}
                 numberOfLines={1}
               >
                 {userDetails?.firstName
@@ -76,6 +83,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
           )}
         </View>
       </Pressable>
+
       <DrawerItemList {...props} />
     </DrawerContentScrollView>
   );
@@ -127,14 +135,13 @@ export const drawerScreens = [
 
 const DrawerNavigator = () => {
   const { currentLevel, isLoadingUser } = useLevel();
-    const [cachedLevel, setCachedLevel] = React.useState<string | null>(null);
-
-    React.useEffect(() => {
-      if (currentLevel?.value) {
-        setCachedLevel(currentLevel.value);
-      }
-    }, [currentLevel]);
-
+  const [cachedLevel, setCachedLevel] = React.useState<string | null>(null);
+  const { theme } = useTheme();
+  React.useEffect(() => {
+    if (currentLevel?.value) {
+      setCachedLevel(currentLevel.value);
+    }
+  }, [currentLevel]);
 
   return (
     <Drawer.Navigator
@@ -145,8 +152,21 @@ const DrawerNavigator = () => {
         gestureEnabled: true,
         swipeEdgeWidth: 50,
         overlayColor: "rgba(0,0,0,0.2)",
-        backgroundColor: "transparent",
         animationTypeForReplace: "push",
+        drawerStyle: {
+          backgroundColor: theme.card,
+        },
+        drawerContentStyle: {
+          backgroundColor: theme.card,
+        },
+        drawerLabelStyle: {
+          color: theme.text,
+          fontSize: 15,
+        },
+        drawerActiveTintColor: theme.primary, // active item text/icon color
+        drawerInactiveTintColor: theme.text, // inactive text/icon color
+        drawerActiveBackgroundColor: theme.border, // highlight bg
+        drawerInactiveBackgroundColor: theme.card,
         headerLeft: () => (
           <TouchableOpacity
             onPress={() => navigation.toggleDrawer()}

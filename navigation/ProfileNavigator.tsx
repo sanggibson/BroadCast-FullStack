@@ -1,9 +1,8 @@
 import React, { useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileScreen from "@/screens/ProfileScreen";
-import { useUser } from "@clerk/clerk-expo";
-import NameScreen from "@/screens/NamesScreen";
-import EditProfile from "@/screens/EditProfile";
+import ChatScreen from "@/screens/ChatScreens/ChatScreen";
+import NamesScreen from "@/screens/AuthScreens/NamesScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,7 +18,7 @@ const ProfileNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Profile" component={ProfileScreen} />
-      {/* <Stack.Screen name="Chat" component={ChatScreen} /> */}
+      <Stack.Screen name="ChatScreen" component={ChatScreen} />
     </Stack.Navigator>
   );
 };

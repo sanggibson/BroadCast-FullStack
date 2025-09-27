@@ -7,8 +7,12 @@ import * as SecureStore from "expo-secure-store";
 import { UserOnboardingProvider } from "./contexts/UserOnBoardingContext";
 import { LevelProvider } from "./context/LevelContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ThemeProvider } from "./context/ThemContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { StreamChat } from "stream-chat";
+import { Chat, OverlayProvider } from "stream-chat-react-native";
+
+const client = StreamChat.getInstance(process.env.STREAM_CHAT_KEY);
 
 export default function App() {
   const tokenCache = {
@@ -34,17 +38,21 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <UserOnboardingProvider>
           <LevelProvider>
-            {/* <ThemeProvider> */}
-              <NavigationContainer>
-                <StripeProvider
-                  publishableKey={
-                    process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-                  }
-                >
-                  <RootNavigator />
-                </StripeProvider>
-              </NavigationContainer>
-            {/* </ThemeProvider> */}
+            <NavigationContainer>
+              <ThemeProvider>
+                <OverlayProvider>
+                  <Chat client={client}>
+                    <StripeProvider
+                      publishableKey={
+                        process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+                      }
+                    >
+                      <RootNavigator />
+                    </StripeProvider>
+                  </Chat>
+                </OverlayProvider>
+              </ThemeProvider>
+            </NavigationContainer>
           </LevelProvider>
         </UserOnboardingProvider>
       </GestureHandlerRootView>

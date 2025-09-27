@@ -1,167 +1,242 @@
-// routes/postRoutes.js
 const express = require("express");
-const { requireAuth } = require("@clerk/express");
 const Post = require("../models/post");
 const User = require("../models/user");
+const Comment = require("../models/comment"); // ✅ Make sure you have a Comment model
 
-const router = express.Router();
+module.exports = (io) => {
+  const router = express.Router();
 
-// ------------------- Create a Post -------------------
-router.post("/", async (req, res) => {
-  try {
-    const { userId, caption, media, levelType, levelValue } = req.body;
+  const getRoomName = (levelType, levelValue) =>
+    `level-${levelType}-${levelValue || "all"}`;
 
-    if (!userId || !caption) {
-      return res.status(400).json({ message: "UserId and caption required" });
+  // ✅ Get posts
+  router.get("/", async (req, res) => {
+    try {
+      const { levelType, levelValue } = req.query;
+
+      const filter = {};
+      if (levelType) filter.levelType = levelType;
+      if (levelValue) filter.levelValue = levelValue;
+
+      const posts = await Post.find(filter).sort({ createdAt: -1 });
+      res.status(200).json(posts);
+    } catch (err) {
+      console.error("❌ Error fetching posts:", err);
+      res.status(500).json({ message: "Server error" });
     }
+  });
 
-    const newPost = await Post.create({
-      userId,
-      caption,
-      media: media || [],
-      levelType,
-      levelValue,
-    });
+  // ✅ Create post
+  router.post("/", async (req, res) => {
+    try {
+      const { userId, caption, media, levelType, levelValue, linkPreview } =
+        req.body;
 
-    res.status(201).json(newPost);
-  } catch (error) {
-    console.error("Error creating post:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+      const user = await User.findOne({ clerkId: userId });
+      if (!user) return res.status(404).json({ message: "User not found" });
 
-// ------------------- Fetch Posts (with optional filters) -------------------
-router.get("/", async (req, res) => {
-  try {
-    const { levelType, levelValue } = req.query;
+      const newPost = new Post({
+        userId,
+        caption,
+        media,
+        levelType,
+        levelValue,
+        linkPreview: linkPreview || null,
+        user: {
+          clerkId: user.clerkId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          nickName: user.nickName,
+          image: user.image,
+        },
+      });
 
-    let filter = {};
-    if (levelType && levelValue) {
-      filter = { levelType, levelValue };
+      await newPost.save();
+
+      const room = getRoomName(levelType, levelValue);
+      io.to(room).emit("newPost", newPost);
+
+      res.status(201).json(newPost);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
     }
+  });
 
-    const posts = await Post.find(filter).sort({ createdAt: -1 }).lean();
+  // ✅ Like / Unlike
+  router.post("/:id/like", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ message: "Missing userId" });
 
-    if (!posts.length) return res.json([]);
+      const post = await Post.findById(req.params.id);
+      if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // collect Clerk IDs
-    const clerkIds = posts.map((p) => p.userId).filter(Boolean);
+      const alreadyLiked = post.likes.includes(userId);
+      if (alreadyLiked) {
+        post.likes = post.likes.filter((id) => id !== userId);
+      } else {
+        post.likes.push(userId);
+      }
 
-    // fetch matching users
-    const users = await User.find({ clerkId: { $in: clerkIds } }).lean();
+      await post.save();
+      io.to(getRoomName(post.levelType, post.levelValue)).emit(
+        "updatePost",
+        post
+      );
 
-    // map clerkId -> user info
-    const userMap = {};
-    users.forEach((u) => {
-      userMap[u.clerkId] = {
-        nickName: u.nickName || u.firstName || "Anonymous",
-        firstName: u.firstName || "",
-        lastName: u.lastName || "",
-        image: u.image || null,
-      };
-    });
-
-    // attach user info to posts
-    const postsWithUser = posts.map((post) => ({
-      ...post,
-      user: userMap[post.userId] || {
-        nickName: "Anonymous",
-        firstName: "",
-        lastName: "",
-        image: null,
-      },
-    }));
-
-    res.json(postsWithUser);
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ------------------- Like a Post -------------------
-router.post("/:postId/like", async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const { userId } = req.body;
-
-    const post = await Post.findById(postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-
-    const index = post.likes.findIndex((id) => id.toString() === userId);
-
-    if (index === -1) {
-      post.likes.push(userId);
-    } else {
-      post.likes.splice(index, 1);
+      res.status(200).json(post);
+    } catch (err) {
+      console.error("❌ Error liking post:", err);
+      res.status(500).json({ message: "Server error" });
     }
+  });
 
-    await post.save();
+  // POST /posts/:id/recast
+  // ✅ Clean single Recast Route
+  router.post("/:id/recast", async (req, res) => {
+    try {
+      console.log("📩 Recast request body:", req.body);
+      console.log("📩 Recast request params:", req.params);
 
-    res.json({ success: true, likes: post.likes.length, liked: index === -1 });
-  } catch (err) {
-    console.error("Error liking post:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+      const { id } = req.params;
+      const { userId, nickname, quoteText } = req.body;
 
-// ------------------- Retweet a Post -------------------
-router.post("/:postId/retweet", async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const { userId, userName } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
 
-    if (!userId) return res.status(400).json({ message: "userId is required" });
+      const post = await Post.findById(id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
 
-    const originalPost = await Post.findById(postId).lean();
-    if (!originalPost) {
-      return res.status(404).json({ message: "Post not found" });
+      // Ensure recasts array exists
+      if (!Array.isArray(post.recasts)) post.recasts = [];
+
+      // Find existing recast by same user (only matters for toggle)
+      const existingIndex = post.recasts.findIndex(
+        (r) => r.userId === userId && !r.quote
+      );
+
+      if (existingIndex >= 0 && !quoteText) {
+        // ✅ Toggle OFF (remove recast)
+        console.log("🔄 Removing existing recast");
+        post.recasts.splice(existingIndex, 1);
+      } else {
+        // ✅ Add new recast
+        console.log("➕ Adding new recast");
+        post.recasts.push({
+          userId,
+          nickname: nickname || "Anonymous",
+          quote: quoteText || "",
+          recastedAt: new Date(),
+        });
+      }
+
+      await post.save();
+
+      // Emit socket update so others see immediately
+      io.to(getRoomName(post.levelType, post.levelValue)).emit(
+        "updatePost",
+        post
+      );
+
+      console.log("✅ Recast processed successfully");
+      return res.status(200).json(post);
+    } catch (error) {
+      console.error("🔥 SERVER ERROR during recast:", error);
+      return res
+        .status(500)
+        .json({ message: "Server error", error: error.message });
     }
+  });
 
-    const alreadyRetweeted = await Post.findOne({
-      originalPostId: postId,
-      userId,
-    });
-
-    if (alreadyRetweeted) {
-      return res.status(400).json({ message: "Already retweeted" });
+  // ✅ Add comment
+  router.get("/:id/comments", async (req, res) => {
+    try {
+      const comments = await Comment.find({ postId: req.params.id }).sort({
+        createdAt: -1,
+      });
+      res.json(comments);
+    } catch (err) {
+      res.status(500).json({ message: "Server error" });
     }
+  });
 
-    const retweet = await Post.create({
-      userId,
-      userName,
-      caption: originalPost.caption,
-      media: originalPost.media,
-      originalPostId: postId,
-      retweetOf: originalPost.userName || "Unknown",
-      levelType: originalPost.levelType,
-      levelValue: originalPost.levelValue,
-    });
-
-    res.status(201).json(retweet);
-  } catch (err) {
-    console.error("Error retweeting post:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ------------------- Delete a Post -------------------
-router.delete("/:id", requireAuth(), async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-
-    // Clerk auth object is available on req.auth
-    if (post.userId !== req.auth.userId) {
-      return res.status(403).json({ message: "Not authorized" });
+  router.post("/:id/comments", async (req, res) => {
+    try {
+      const { userId, text } = req.body;
+      const newComment = new Comment({
+        postId: req.params.id,
+        userId,
+        text,
+      });
+      await newComment.save();
+      res.status(201).json(newComment);
+    } catch (err) {
+      res.status(500).json({ message: "Server error" });
     }
+  });
 
-    await post.deleteOne();
-    res.json({ message: "Post deleted" });
-  } catch (err) {
-    console.error("Error deleting post:", err);
-    res.status(500).json({ message: "Server error", err });
-  }
-});
+  // ✅ Delete post (with ownership check)
+  router.delete("/:id", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const post = await Post.findById(req.params.id);
+      if (!post) return res.status(404).json({ message: "Post not found" });
 
-module.exports = router;
+      if (post.userId !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Unauthorized to delete this post" });
+      }
+
+      await post.deleteOne();
+
+      io.to(getRoomName(post.levelType, post.levelValue)).emit(
+        "deletePost",
+        post._id
+      );
+
+      res.status(200).json({ message: "Post deleted", postId: req.params.id });
+    } catch (err) {
+      console.error("❌ Error deleting post:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  router.post("/:id/recast", async (req, res) => {
+    try {
+      const { userId, quoteText } = req.body;
+      const { id } = req.params;
+
+      const post = await Post.findById(id);
+      if (!post) return res.status(404).json({ message: "Post not found" });
+
+      // ✅ Check if already recasted (without quote)
+      const existingIndex = post.recasts.findIndex((r) => r.userId === userId);
+
+      if (existingIndex >= 0 && !quoteText) {
+        // If already recasted, remove it (toggle behavior)
+        post.recasts.splice(existingIndex, 1);
+      } else {
+        // Add a new recast
+        post.recasts.push({ userId, quoteText: quoteText || "" });
+      }
+
+      await post.save();
+
+      // Notify via socket.io
+      const io = req.app.get("io");
+      io.emit("postUpdated", post);
+
+      res.status(200).json(post);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Error recasting post" });
+    }
+  });
+
+  return router;
+};

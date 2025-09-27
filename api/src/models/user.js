@@ -20,6 +20,9 @@ const userSchema = new mongoose.Schema(
     verifyTokenExpiry: { type: Date },
 
     provider: { type: String, default: "clerk" }, // ✅ default provider
+
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   {
     timestamps: true,

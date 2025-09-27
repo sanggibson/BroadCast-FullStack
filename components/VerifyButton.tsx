@@ -77,7 +77,7 @@ const VerifyButton = () => {
       console.error("Verification error:", err);
       Alert.alert(
         "❌ Error",
-        "Failed to send verification email. Try again later."
+        "Failed to send verification email check your internet connection. Try again later."
       );
     } finally {
       setLoading(false);

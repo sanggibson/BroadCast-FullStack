@@ -1,28 +1,35 @@
-// models/post.js
 const mongoose = require("mongoose");
 
-const PostSchema = new mongoose.Schema(
+const postSchema = new mongoose.Schema(
   {
-    userId: { type: String, required: true }, // Clerk ID
-    caption: { type: String, required: true, trim: true },
-    media: [{ type: String }],
-    commentsCount: { type: Number, default: 0 },
-    retweets: { type: [String], default: [] },
-    levelType: { type: String, required: true },
-    levelValue: { type: String, required: true },
-    likes: { type: [String], default: [] }, // Clerk IDs, not ObjectIds
-    comments: [
+    userId: { type: String, required: true },
+    caption: String,
+    media: [String],
+    levelType: String,
+    levelValue: String,
+    linkPreview: Object,
+    likes: { type: [String], default: [] },
+
+    // ✅ Replace retweets array with recasts object array
+    recasts: [
       {
         userId: { type: String, required: true },
-        text: String,
-        createdAt: { type: Date, default: Date.now },
+        nickname: { type: String, required: true },
+        quote: { type: String, default: "" },
+        recastedAt: { type: Date, default: Date.now },
       },
     ],
-    originalPostId: { type: String, default: null },
-    retweetOf: { type: String, default: null },
-    userName: { type: String }, // optional
+
+    commentsCount: { type: Number, default: 0 },
+    user: {
+      clerkId: String,
+      firstName: String,
+      lastName: String,
+      nickName: String,
+      image: String,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Post", PostSchema);
+module.exports = mongoose.model("Post", postSchema);

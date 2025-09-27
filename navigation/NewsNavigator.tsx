@@ -1,7 +1,7 @@
 import { View, Text } from "react-native";
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import NewsScreen from "@/screens/NewsScreen";
+import NewsScreen from "@/screens/NewsScreens/NewsScreen";
 
 const NewsNavigator = () => {
   const Stack = createNativeStackNavigator();
