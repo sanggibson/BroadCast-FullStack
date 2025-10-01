@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -5,7 +6,6 @@ import {
   Image,
   StyleSheet,
   ScrollView,
-  Pressable,
   TouchableOpacity,
   Dimensions,
   StatusBar,
@@ -24,6 +24,12 @@ import moment from "moment";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
 import { useTheme } from "@/context/ThemeContext";
+import axios from "axios";
+import { useUser } from "@clerk/clerk-expo";
+import { useLevel } from "@/context/LevelContext";
+import Video from "react-native-video";
+
+const BASE_URL = "http://192.168.100.4:3000/api";
 
 type PostDetailRouteProp = RouteProp<RootStackParamList, "PostDetail">;
 
@@ -33,229 +39,185 @@ const PostDetailScreen = () => {
   const route = useRoute<PostDetailRouteProp>();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { post } = route.params;
   const { theme, isDark } = useTheme();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const { user } = useUser();
+  const currentUser = { _id: user?.id };
+  const { userDetails } = useLevel();
 
-  const handleLike = (id: string) => {
-    console.log("Liked", id);
+  const [post, setPost] = useState(route.params.post);
+
+  // ----------------- LIKE HANDLER -----------------
+  const handleLike = async () => {
+    try {
+      setPost((prev) => {
+        const likes = prev.likes || [];
+        const alreadyLiked = likes.includes(currentUser._id);
+
+        return {
+          ...prev,
+          likes: alreadyLiked
+            ? likes.filter((id) => id !== currentUser._id)
+            : [...likes, currentUser._id],
+        };
+      });
+
+      await axios.post(`${BASE_URL}/posts/${post._id}/like`, {
+        userId: currentUser._id,
+      });
+    } catch (err) {
+      console.error("Error liking post:", err);
+      setPost(post); // rollback
+    }
   };
 
+  // ----------------- RETWEET HANDLER -----------------
   const handleRetweet = (id: string) => {
     console.log("Retweeted", id);
   };
 
-  // ✅ Renders media in Instagram-style grid
-  // ✅ Renders ALL media in Instagram-style grid
-  // const renderMediaGrid = () => {
-  //   if (!post.media || post.media.length === 0) return null;
-
-  //   const media = post.media;
-  //   const count = media.length;
-
-  //   if (count === 1) {
-  //     return (
-  //       <Image
-  //         source={{ uri: media[0] }}
-  //         style={{ width: "100%", height: 300 }}
-  //         resizeMode="cover"
-  //       />
-  //     );
-  //   }
-
-  //   if (count === 2) {
-  //     return (
-  //       <View style={styles.row}>
-  //         {media.map((uri, i) => (
-  //           <Image
-  //             key={i}
-  //             source={{ uri }}
-  //             style={styles.twoImg}
-  //             resizeMode="cover"
-  //           />
-  //         ))}
-  //       </View>
-  //     );
-  //   }
-
-  //   if (count === 3) {
-  //     return (
-  //       <View>
-  //         <View style={styles.row}>
-  //           {media.slice(0, 2).map((uri, i) => (
-  //             <Image
-  //               key={i}
-  //               source={{ uri }}
-  //               style={styles.twoImg}
-  //               resizeMode="cover"
-  //             />
-  //           ))}
-  //         </View>
-  //         <Image
-  //           source={{ uri: media[2] }}
-  //           style={{ width: "100%", height: 200 }}
-  //           resizeMode="cover"
-  //         />
-  //       </View>
-  //     );
-  //   }
-
-  //   // ✅ 4 or more → break into rows of 2
-  //   return (
-  //     <View style={{ flexDirection: "column", flexWrap: "wrap" }}>
-  //       {Array.from({ length: Math.ceil(count / 2) }).map((_, rowIndex) => (
-  //         <View key={rowIndex} style={styles.row}>
-  //           {media.slice(rowIndex * 2, rowIndex * 2 + 2).map((uri, i) => (
-  //             <Image
-  //               key={i}
-  //               source={{ uri }}
-  //               style={styles.twoImg}
-  //               resizeMode="cover"
-  //             />
-  //           ))}
-  //         </View>
-  //       ))}
-  //     </View>
-  //   );
-  // };
-
+  // ----------------- MEDIA GRID -----------------
   const renderMediaGrid = () => {
     if (!post.media || post.media.length === 0) return null;
 
-    const media = post.media;
-    const count = media.length;
+    return post.media.map((uri: string, index: number) => {
+      const isVideo = uri.endsWith(".mp4");
 
-    // ✅ 1 image → full width
-    if (count === 1) {
-      return (
+      // Single media
+      if (post.media.length === 1) {
+        return isVideo ? (
+          <Video
+            key={index}
+            source={{ uri }}
+            style={styles.singleMedia}
+            resizeMode="cover"
+            repeat
+            // muted
+            controls
+          />
+        ) : (
+          <Image
+            key={index}
+            source={{ uri }}
+            style={styles.singleMedia}
+            resizeMode="cover"
+          />
+        );
+      }
+
+      // Multiple media (stacked)
+      return isVideo ? (
+        <Video
+          key={index}
+          source={{ uri }}
+          style={styles.multiMedia}
+          resizeMode="cover"
+          repeat
+          // muted
+          controls
+        />
+      ) : (
         <Image
-          source={{ uri: media[0] }}
-          style={{ width: "100%", height: 300 }}
+          key={index}
+          source={{ uri }}
+          style={styles.multiMedia}
           resizeMode="cover"
         />
       );
-    }
-
-    // ✅ 2 images → side by side
-    if (count === 2) {
-      return (
-        <View style={styles.row}>
-          {media.map((uri, i) => (
-            <Image
-              key={i}
-              source={{ uri }}
-              style={styles.twoImg}
-              resizeMode="cover"
-            />
-          ))}
-        </View>
-      );
-    }
-
-    // ✅ 3 or more → stack in a column (each full width)
-    return (
-      <View style={{ flexDirection: "column" }}>
-        {media.map((uri, i) => (
-          <Image
-            key={i}
-            source={{ uri }}
-            style={{ width: "100%", height: 400, marginBottom: 6 }}
-            resizeMode="cover"
-          />
-        ))}
-      </View>
-    );
+    });
   };
 
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      {/* Transparent StatusBar */}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <StatusBar
         translucent
-        backgroundColor="transparent" // prevent the warning
+        backgroundColor="transparent"
         barStyle={isDark ? "light-content" : "dark-content"}
       />
+
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 50 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
       >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.userRow}>
-            <Image source={{ uri: post?.userImg }} style={styles.userImg} />
+            <Image
+              source={{ uri: userDetails?.image || user?.imageUrl }}
+              style={styles.userImg}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={styles.userName}>{post.firstName}</Text>
-              {post?.nickName && (
-                <Text style={styles.nickname}>@{post.nickname}</Text>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {user?.firstName}
+              </Text>
+              {user?.lastName && (
+                <Text style={styles.nickname}>@{user?.lastName}</Text>
               )}
             </View>
-            <View style={styles.timeContainer}>
-              <Text style={styles.time}>
-                {moment(post.createdAt).fromNow()}
-              </Text>
-            </View>
+            <Text style={styles.time}>{moment(post.createdAt).fromNow()}</Text>
           </View>
-          <Pressable onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={28} color="#000" />
-          </Pressable>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="close" size={26} color={isDark ? "#fff" : "#000"} />
+          </TouchableOpacity>
         </View>
 
         {/* Media Grid */}
         {renderMediaGrid()}
 
         {/* Caption */}
-        {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
-
-        {/* Actions */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={styles.action}
-            onPress={() => handleLike(post._id)}
-          >
-            <AntDesign
-              name={post.likes?.includes(post.userId) ? "heart" : "hearto"}
-              size={20}
-              color={post.likes?.includes(post.userId) ? "red" : "gray"}
-            />
-            <Text style={styles.actionText}>{post.likes?.length || 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.action}
-            onPress={() => navigation.navigate("CommentsScreen", { post })}
-          >
-            <Feather name="message-circle" size={20} color="gray" />
-            <Text style={styles.actionText}>{post.commentsCount || 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.action}
-            onPress={() => handleRetweet(post._id)}
-          >
-            <FontAwesome5
-              name="retweet"
-              size={20}
-              color={post.originalPostId ? "green" : "gray"}
-            />
-            <Text style={styles.actionText}>{post.retweets?.length || 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.action}>
-            <MaterialCommunityIcons
-              name="comment-quote-outline"
-              size={20}
-              color="gray"
-            />
-            <Text style={styles.actionText}>{post.rcast || 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.action}>
-            <Feather name="share" size={20} color="gray" />
-            <Text style={styles.actionText}>{post.shares || 0}</Text>
-          </TouchableOpacity>
-        </View>
+        {post.caption && (
+          <Text style={[styles.caption, { color: theme.text }]}>
+            {post.caption}
+          </Text>
+        )}
       </ScrollView>
+
+      {/* Floating actions */}
+      <View style={styles.actionsColumn}>
+        <TouchableOpacity style={styles.action} onPress={handleLike}>
+          <AntDesign
+            name={post.likes?.includes(currentUser._id) ? "heart" : "hearto"}
+            size={20}
+            color={post.likes?.includes(currentUser._id) ? "red" : "white"}
+          />
+          <Text style={styles.actionText}>{post.likes?.length}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.action}
+          onPress={() => navigation.navigate("CommentsScreen", { post })}
+        >
+          <Feather name="message-circle" size={20} color="white" />
+          <Text style={styles.actionText}>{post.commentsCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.action}
+          onPress={() => handleRetweet(post._id)}
+        >
+          <FontAwesome5
+            name="retweet"
+            size={20}
+            color={post.originalPostId ? "green" : "white"}
+          />
+          <Text style={styles.actionText}>{post.retweets?.length}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.action}>
+          <MaterialCommunityIcons
+            name="comment-quote-outline"
+            size={20}
+            color="white"
+          />
+          <Text style={styles.actionText}>{post.rcast}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.action}>
+          <Feather name="share" size={20} color="white" />
+          <Text style={styles.actionText}>{post.shares}</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -263,12 +225,14 @@ const PostDetailScreen = () => {
 export default PostDetailScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
@@ -276,47 +240,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: 10,
   },
   userImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 10,
     backgroundColor: "#ddd",
   },
-  userName: { fontSize: 16, fontWeight: "600", color: "#000" },
+  userName: { fontSize: 16, fontWeight: "600" },
   nickname: { fontSize: 13, color: "gray" },
-  timeContainer: {
-    backgroundColor: "#f5f5f5",
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: "auto",
-  },
-  time: { color: "#555", fontSize: 12, fontWeight: "500" },
-  caption: { fontSize: 16, color: "#333", paddingHorizontal: 15, marginTop: 8 },
+  time: { fontSize: 12, color: "gray", marginLeft: "auto" },
 
-  // ✅ Grid styles
-  row: { flexDirection: "row", flexWrap: "wrap" },
-  twoImg: { width: "50%", height: 200 },
-  gridImg: { width: "50%", height: 150 },
-  fourthImg: { width: "50%", height: 150 },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
+  caption: {
+    fontSize: 16,
+    paddingHorizontal: 15,
+    marginTop: 10,
+    lineHeight: 22,
+  },
+
+  singleMedia: { width: "100%", height: 300, borderRadius: 10 },
+  multiMedia: { width: "100%", height: 380, marginBottom: 6, borderRadius: 10 },
+
+  actionsColumn: {
+    position: "absolute",
+    right: 15,
+    bottom: 100,
     alignItems: "center",
+    backgroundColor: "rgba(128,128,128,0.4)",
+    borderRadius: 50,
+    padding: 10,
   },
-  overlayText: { color: "#fff", fontSize: 22, fontWeight: "bold" },
-
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+  action: {
+    alignItems: "center",
+    marginVertical: 15,
   },
-  action: { flexDirection: "row", alignItems: "center" },
-  actionText: { marginLeft: 6, fontSize: 12, color: "#555" },
+  actionText: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "white",
+  },
 });
+

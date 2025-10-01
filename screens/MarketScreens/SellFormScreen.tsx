@@ -264,7 +264,11 @@ const SellFormScreen = () => {
         <TextInput
           style={[
             styles.input,
-            { backgroundColor: theme.card, color: theme.text },
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
           ]}
           placeholder="Enter product name"
           value={title}
@@ -278,7 +282,11 @@ const SellFormScreen = () => {
         <TextInput
           style={[
             styles.input,
-            { backgroundColor: theme.card, color: theme.text },
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
           ]}
           placeholder="Enter price"
           keyboardType="numeric"
@@ -294,7 +302,11 @@ const SellFormScreen = () => {
           style={[
             styles.input,
             styles.textArea,
-            { backgroundColor: theme.card, color: theme.text },
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
           ]}
           placeholder="Enter product description"
           value={description}
@@ -312,7 +324,7 @@ const SellFormScreen = () => {
         <View
           style={[
             styles.pickerWrapper,
-            { backgroundColor: theme.card, borderColor: theme.subtext },
+            { backgroundColor: theme.card, borderColor: theme.border },
           ]}
         >
           <Picker
@@ -378,7 +390,10 @@ const SellFormScreen = () => {
             </ScrollView>
           )
         ) : (
-          <TouchableOpacity style={styles.imageUpload} onPress={pickMedia}>
+          <TouchableOpacity
+            style={[styles.imageUpload, { borderColor: theme.border }]}
+            onPress={pickMedia}
+          >
             <Ionicons name="camera" size={28} color="#666" />
             <Text style={{ color: "#666", marginTop: 4 }}>
               Click here to upload Images

@@ -22,23 +22,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
 import { useLevel } from "@/context/LevelContext";
 import { useTheme } from "@/context/ThemeContext";
+import moment from "moment";
 
 const API_URL = `http://192.168.100.4:3000/api/comments`;
-
-// helper → format date into "mins ago"
-const timeAgo = (dateString: string) => {
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHrs = Math.floor(diffMins / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-  const diffDays = Math.floor(diffHrs / 24);
-  return `${diffDays}d ago`;
-};
 
 export default function CommentsScreen() {
   const route = useRoute<any>();
@@ -83,8 +69,8 @@ export default function CommentsScreen() {
         text: commentText,
       });
       setCommentText("");
-      await fetchComments();
-
+      // optimistic UI → push new comment to state immediately
+      fetchComments();
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 200);
@@ -92,28 +78,74 @@ export default function CommentsScreen() {
       console.error("Error posting comment:", err);
     }
   };
+  
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await axios.delete(`${API_URL}/${commentId}`);
+      setComments((prev) => prev.filter((c) => c._id !== commentId));
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+    }
+  };
 
   const handleLikeComment = async (commentId: string) => {
+    if (!user?.id) return;
+
+    // Optimistic update
+    setComments((prev) =>
+      prev.map((c) =>
+        c._id === commentId
+          ? {
+              ...c,
+              likes: c.likes.includes(user.id)
+                ? c.likes.filter((id: string) => id !== user.id)
+                : [...c.likes, user.id],
+            }
+          : c
+      )
+    );
+
     try {
-      await axios.post(`${API_URL}/${commentId}/like`, {
-        userId: user?.id,
-      });
-      fetchComments();
+      await axios.post(`${API_URL}/${commentId}/like`, { userId: user.id });
     } catch (err) {
       console.error("Error liking comment:", err);
+      fetchComments();
     }
   };
 
-  const handleLikeReply = async (commentId: string, replyIndex: number) => {
-    try {
-      await axios.post(`${API_URL}/${commentId}/replies/${replyIndex}/like`, {
-        userId: user?.id,
-      });
-      fetchComments();
-    } catch (err) {
-      console.error("Error liking reply:", err);
-    }
-  };
+ const handleLikeReply = async (commentId: string, replyId: string) => {
+   if (!user?.id) return;
+
+   // Optimistic update
+   setComments((prev) =>
+     prev.map((c) => {
+       if (c._id === commentId) {
+         const replies = c.replies.map((reply: any) =>
+           reply._id === replyId
+             ? {
+                 ...reply,
+                 likes: reply.likes.includes(user.id)
+                   ? reply.likes.filter((id: string) => id !== user.id)
+                   : [...reply.likes, user.id],
+               }
+             : reply
+         );
+         return { ...c, replies };
+       }
+       return c;
+     })
+   );
+
+   try {
+     await axios.post(`${API_URL}/${commentId}/replies/${replyId}/like`, {
+       userId: user.id,
+     });
+   } catch (err) {
+     console.error("Error liking reply:", err);
+     fetchComments(); // rollback on error
+   }
+ };
+
 
   const handleAddReply = async () => {
     if (!replyText.trim() || !replyingTo) return;
@@ -156,29 +188,20 @@ export default function CommentsScreen() {
           {reply.text}
         </Text>
 
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            marginTop: 6,
-          }}
-        >
-          <Text style={{ fontSize: 12, color: "gray", marginRight: 12 }}>
-            {timeAgo(reply.createdAt)}
+        <View style={styles.rightActions}>
+          <Text style={styles.timeText}>
+            {moment(reply.createdAt).fromNow()}
           </Text>
           <TouchableOpacity
-            style={{ flexDirection: "row", alignItems: "center" }}
-            onPress={() => handleLikeReply(parentId, index)}
+            style={styles.likeBtn}
+            onPress={() => handleLikeReply(parentId, reply._id)}
           >
             <AntDesign
               name="heart"
               size={14}
               color={reply.likes.includes(user?.id) ? "red" : "gray"}
             />
-            <Text style={{ fontSize: 12, marginLeft: 4, color: "gray" }}>
-              {reply.likes.length}
-            </Text>
+            <Text style={styles.likeCount}>{reply.likes.length}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -186,13 +209,8 @@ export default function CommentsScreen() {
 
   const renderItem = ({ item }: any) => (
     <View style={styles.commentBox}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+      {/* Top Row */}
+      <View style={styles.commentHeader}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Image
             source={{
@@ -209,15 +227,25 @@ export default function CommentsScreen() {
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Ionicons name="time-outline" size={14} color="gray" />
-          <Text style={styles.timeText}>{timeAgo(item.createdAt)}</Text>
+          <Text style={styles.timeText}>
+            {moment(item.createdAt).fromNow()}
+          </Text>
+
+          {item.userId === user?.id && (
+            <TouchableOpacity onPress={() => handleDeleteComment(item._id)}>
+              <Ionicons name="trash-outline" size={18} color="red" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
+      {/* Comment Text */}
       <Text style={[styles.commentText, { color: theme.subtext }]}>
         {item.text}
       </Text>
 
-      <View style={styles.commentActions}>
+      {/* Actions */}
+      <View style={styles.rightActions}>
         <TouchableOpacity
           style={styles.likeBtn}
           onPress={() => handleLikeComment(item._id)}
@@ -269,53 +297,7 @@ export default function CommentsScreen() {
 
         {/* Post preview */}
         <View style={{ padding: 6, borderBottomColor: "#eee" }}>
-          {post.media?.length > 0 && (
-            <>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                style={styles.mediaScroll}
-                onScroll={(e) => {
-                  const slide = Math.round(
-                    e.nativeEvent.contentOffset.x /
-                      (Dimensions.get("window").width - 30)
-                  );
-                  setActiveIndex(slide);
-                }}
-                scrollEventThrottle={16}
-              >
-                {post.media.map((uri: string, idx: number) =>
-                  uri.endsWith(".mp4") ? (
-                    <View key={idx} style={styles.videoPlaceholder}>
-                      <Ionicons name="play-circle" size={50} color="#fff" />
-                    </View>
-                  ) : (
-                    <Image
-                      key={idx}
-                      source={{ uri }}
-                      style={styles.scrollImage}
-                      resizeMode="cover"
-                    />
-                  )
-                )}
-              </ScrollView>
-
-              <View style={styles.pagination}>
-                {post.media.map((_: string, i: number) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      { opacity: i === activeIndex ? 1 : 0.3 },
-                    ]}
-                  />
-                ))}
-              </View>
-            </>
-          )}
-
-          <Text style={styles.postCaption}>{post.caption}</Text>
+          <Text style={[styles.postCaption,{color: theme.text}]}>{post.caption}</Text>
           <Text style={styles.postUser}>@{post.user?.nickName}</Text>
         </View>
 
@@ -341,33 +323,10 @@ export default function CommentsScreen() {
         )}
 
         {/* Add comment */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            padding: 8,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: "#eee",
-            backgroundColor: theme.background,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              flex: 1,
-              borderWidth: 1,
-              borderColor: theme.subtext,
-              borderRadius: 20,
-              paddingHorizontal: 10,
-            }}
-          >
+        <View style={styles.inputRow}>
+          <View style={[styles.inputWrapper,{borderColor: theme.border}]}>
             <TextInput
-              style={{
-                flex: 1,
-                paddingVertical: 6,
-                color: theme.text,
-              }}
+              style={[styles.inputText, { color: theme.text }]}
               placeholder="Add a comment..."
               value={commentText}
               onChangeText={setCommentText}
@@ -393,7 +352,7 @@ export default function CommentsScreen() {
               Replying to {replyingTo?.userName}
             </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Write a reply..."
               value={replyText}
               onChangeText={setReplyText}
@@ -427,50 +386,42 @@ const styles = StyleSheet.create({
   postCaption: { fontSize: 14, marginBottom: 4 },
   postUser: { fontSize: 12, color: "gray" },
   commentBox: { padding: 10 },
+  commentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   commentText: { marginVertical: 2 },
-  commentActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  rightActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 16,
+    marginTop: 6,
+  },
   timeText: { fontSize: 12, color: "gray" },
   likeBtn: { flexDirection: "row", alignItems: "center" },
   likeCount: { fontSize: 12, marginLeft: 4, color: "gray" },
   replyBtn: { fontSize: 13, color: "blue" },
-  inputcomment: {
+  emptyText: { textAlign: "center", marginTop: 20, color: "gray" },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#eee",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 20,
     paddingHorizontal: 10,
-    padding: 6,
+    paddingVertical: 5,
   },
-  sendBtn: { marginLeft: 8, color: "blue", fontWeight: "bold" },
-  emptyText: { textAlign: "center", marginTop: 20, color: "gray" },
-  mediaScroll: { marginBottom: 6 },
-  scrollImage: {
-    width: Dimensions.get("window").width - 30,
-    height: 300,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  videoPlaceholder: {
-    width: Dimensions.get("window").width - 30,
-    height: 300,
-    borderRadius: 8,
-    backgroundColor: "#000",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginVertical: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#333",
-    marginHorizontal: 4,
-  },
+  inputText: { flex: 1, paddingVertical: 6 },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",

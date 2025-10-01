@@ -99,6 +99,7 @@ router.post("/:statusId/like", async (req, res) => {
 });
 
 // ------------------- Delete a Status -------------------
+// ------------------- Delete a Status -------------------
 router.delete("/:statusId", async (req, res) => {
   try {
     const { statusId } = req.params;
@@ -124,5 +125,6 @@ router.delete("/:statusId", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 module.exports = router;

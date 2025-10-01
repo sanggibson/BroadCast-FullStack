@@ -37,7 +37,7 @@ router.get("/:postId", async (req, res) => {
     const { postId } = req.params;
     const comments = await Comment.find({ postId }).sort({ createdAt: -1 });
 
-    // Sort replies inside each comment
+    // Sort replies newest first
     comments.forEach((c) => {
       c.replies.sort((a, b) => b.createdAt - a.createdAt);
     });
@@ -49,7 +49,7 @@ router.get("/:postId", async (req, res) => {
   }
 });
 
-// ------------------- Like a Comment -------------------
+// ------------------- Like/Unlike a Comment -------------------
 router.post("/:commentId/like", async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -72,57 +72,15 @@ router.post("/:commentId/like", async (req, res) => {
   }
 });
 
-// ------------------- Like a Reply -------------------
-router.post("/:commentId/replies/:replyId/like", async (req, res) => {
-  try {
-    const { commentId, replyId } = req.params;
-    const { userId } = req.body;
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) return res.status(404).json({ message: "Comment not found" });
-
-    const reply = comment.replies.id(replyId);
-    if (!reply) return res.status(404).json({ message: "Reply not found" });
-
-    if (!reply.likes) reply.likes = [];
-    if (reply.likes.includes(userId)) {
-      reply.likes = reply.likes.filter((id) => id !== userId);
-    } else {
-      reply.likes.push(userId);
-    }
-
-    await comment.save();
-    res.json(comment);
-  } catch (err) {
-    console.error("Error liking reply:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ------------------- Delete a Comment -------------------
-router.delete("/:commentId", async (req, res) => {
-  try {
-    const { commentId } = req.params;
-    const comment = await Comment.findById(commentId);
-    if (!comment) return res.status(404).json({ message: "Comment not found" });
-
-    await Comment.findByIdAndDelete(commentId);
-    await Post.findByIdAndUpdate(comment.postId, {
-      $inc: { commentsCount: -1 },
-    });
-
-    res.json({ message: "Comment deleted" });
-  } catch (err) {
-    console.error("Error deleting comment:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
 // ------------------- Add a Reply -------------------
-router.post("/:commentId/reply", async (req, res) => {
+router.post("/:commentId/replies", async (req, res) => {
   try {
     const { commentId } = req.params;
     const { userId, userName, text } = req.body;
+
+    if (!userId || !text) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
 
     const comment = await Comment.findById(commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
@@ -132,10 +90,10 @@ router.post("/:commentId/reply", async (req, res) => {
       userName: userName || "Anonymous",
       text,
       likes: [],
+      createdAt: new Date(),
     });
 
     await comment.save();
-
     res.status(201).json(comment);
   } catch (err) {
     console.error("Error adding reply:", err);
@@ -159,6 +117,57 @@ router.delete("/:commentId/replies/:replyId", async (req, res) => {
     res.json({ message: "Reply deleted" });
   } catch (err) {
     console.error("Error deleting reply:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ------------------- Like/Unlike a Reply -------------------
+router.post("/:commentId/replies/:replyId/like", async (req, res) => {
+  try {
+    const { commentId, replyId } = req.params;
+    const { userId } = req.body;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    const reply = comment.replies.id(replyId);
+    if (!reply) return res.status(404).json({ message: "Reply not found" });
+
+    const index = reply.likes.indexOf(userId);
+    if (index === -1) {
+      reply.likes.push(userId);
+    } else {
+      reply.likes.splice(index, 1);
+    }
+
+    await comment.save();
+
+    res.json({
+      success: true,
+      likes: reply.likes.length,
+      liked: index === -1,
+    });
+  } catch (err) {
+    console.error("Error liking reply:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ------------------- Delete a Comment -------------------
+router.delete("/:commentId", async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const comment = await Comment.findById(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    await Comment.findByIdAndDelete(commentId);
+    await Post.findByIdAndUpdate(comment.postId, {
+      $inc: { commentsCount: -1 },
+    });
+
+    res.json({ message: "Comment deleted" });
+  } catch (err) {
+    console.error("Error deleting comment:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

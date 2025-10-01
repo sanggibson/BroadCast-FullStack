@@ -288,31 +288,61 @@ const InputScreen = () => {
       </View>
 
       {/* Media Previews */}
-      {media.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {media.map((item, index) => (
-            <View key={index} style={styles.previewWrapper}>
-              {item.type === "image" ? (
-                <Image source={{ uri: item.uri }} style={styles.postImg} />
-              ) : (
-                <Video
-                  source={{ uri: item.uri }}
-                  style={styles.postImg}
-                  resizeMode="cover"
-                  controls
-                  paused
-                />
-              )}
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => removeMedia(item.uri)}
-              >
-                <Ionicons name="close-circle" size={24} color="red" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      {media.length > 0 &&
+        (media.length === 1 ? (
+          <View style={{ alignItems: "center", marginBottom: 10 }}>
+            {media[0].type === "image" ? (
+              <Image
+                source={{ uri: media[0].uri }}
+                style={{ width: "100%", height: 300, borderRadius: 12 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Video
+                source={{ uri: media[0].uri }}
+                style={{ width: "100%", height: 300, borderRadius: 12 }}
+                resizeMode="cover"
+                controls
+              />
+            )}
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => removeMedia(media[0].uri)}
+            >
+              <Ionicons name="close-circle" size={28} color="red" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ height: 110, marginBottom: 10 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ alignItems: "center" }}
+            >
+              {media.map((item, index) => (
+                <View key={index} style={styles.previewWrapper}>
+                  {item.type === "image" ? (
+                    <Image source={{ uri: item.uri }} style={styles.postImg} />
+                  ) : (
+                    <Video
+                      source={{ uri: item.uri }}
+                      style={styles.postImg}
+                      resizeMode="cover"
+                      controls
+                      paused
+                    />
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeMedia(item.uri)}
+                  >
+                    <Ionicons name="close-circle" size={22} color="red" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ))}
 
       {postError ? <Text style={{ color: "red" }}>{postError}</Text> : null}
 
@@ -337,7 +367,7 @@ const InputScreen = () => {
       {linkData && (
         <TouchableOpacity
           onPress={() => Linking.openURL(linkData.url)}
-          style={[styles.linkPreview,{borderColor: theme.border}]}
+          style={[styles.linkPreview, { borderColor: theme.border }]}
         >
           {linkLoading ? (
             <View style={styles.linkLoading}>
@@ -355,11 +385,15 @@ const InputScreen = () => {
           )}
 
           <View style={{ padding: 10 }}>
-            <Text style={{ fontWeight: "bold", marginBottom: 4, color: theme.text }}>
+            <Text
+              style={{ fontWeight: "bold", marginBottom: 4, color: theme.text }}
+            >
               {linkData.title}
             </Text>
             {linkData.description && (
-              <Text style={{ fontSize: 12, color: theme.subtext }}>{linkData.description}</Text>
+              <Text style={{ fontSize: 12, color: theme.subtext }}>
+                {linkData.description}
+              </Text>
             )}
           </View>
         </TouchableOpacity>
@@ -400,7 +434,7 @@ const styles = StyleSheet.create({
   },
   postButtonText: { color: "white", fontWeight: "bold", fontSize: 16 },
   previewWrapper: { position: "relative", marginRight: 10 },
-  postImg: { width: 120, height: 120, borderRadius: 12 },
+  postImg: { width: 300, height: 300, borderRadius: 12 },
   removeButton: {
     position: "absolute",
     top: 5,

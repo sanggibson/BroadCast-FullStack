@@ -27,6 +27,7 @@ import Video from "react-native-video";
 import { useLevel } from "@/context/LevelContext";
 import { useTheme } from "@/context/ThemeContext";
 import * as Linking from "expo-linking";
+import moment from "moment";
 
 const API_URL = "http://192.168.100.4:3000/api/posts";
 
@@ -56,6 +57,7 @@ const PostItem: React.FC<PostItemProps> = ({
   const [loading, setLoading] = useState(false);
   const [verificationStarted, setVerificationStarted] = useState(false);
   const [verified, setVerified] = useState(false);
+
   const { theme } = useTheme();
   const [linkData, setLinkData] = useState<{
     url: string;
@@ -100,14 +102,43 @@ const PostItem: React.FC<PostItemProps> = ({
   }, [socket, currentPost, handleDeletePost]);
 
   /** Like post */
+  // const handleLike = async () => {
+  //   if (!currentUserId) return;
+  //   try {
+  //     await axios.post(`${API_URL}/${currentPost._id}/like`, {
+  //       userId: currentUserId,
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+
+  /** Like post */
   const handleLike = async () => {
     if (!currentUserId) return;
+
+    // Optimistic UI update
+    const alreadyLiked = currentPost.likes?.includes(currentUserId);
+    const updatedLikes = alreadyLiked
+      ? currentPost.likes.filter((id: string) => id !== currentUserId)
+      : [...currentPost.likes, currentUserId];
+
+    setCurrentPost({ ...currentPost, likes: updatedLikes });
+
+    // Animate like button for feedback
+    Animated.sequence([
+      Animated.spring(likeScale, { toValue: 1.3, useNativeDriver: true }),
+      Animated.spring(likeScale, { toValue: 1, useNativeDriver: true }),
+    ]).start();
+
     try {
       await axios.post(`${API_URL}/${currentPost._id}/like`, {
         userId: currentUserId,
       });
     } catch (err) {
       console.error(err);
+      // Rollback if backend fails
+      setCurrentPost(currentPost);
     }
   };
 
@@ -142,6 +173,7 @@ const PostItem: React.FC<PostItemProps> = ({
 
   const pureRecasts = (currentPost.recasts || []).filter((r: any) => !r.quote);
   const quoteRecasts = (currentPost.recasts || []).filter((r: any) => r.quote);
+  const recites = (currentPost.recasts || []).filter((r: any) => r.quote);
 
   useEffect(() => {
     let interval: any;
@@ -182,21 +214,6 @@ const PostItem: React.FC<PostItemProps> = ({
           elevation: 2,
         }}
       >
-        {/* {loadingRecasts && (
-          <View
-            style={{
-              padding: 8,
-              alignItems: "center",
-              backgroundColor: theme.background,
-            }}
-          >
-            <ActivityIndicator size="small" color="gray" />
-            <Text style={{ fontSize: 12, color: "gray" }}>
-              Loading casts...
-            </Text>
-          </View>
-        )} */}
-
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -220,7 +237,7 @@ const PostItem: React.FC<PostItemProps> = ({
                 {verified && (
                   <Image
                     source={require("@/assets/verif.png")}
-                    style={{ width: 20, height: 20, marginLeft: 6 }}
+                    style={{ width: 18, height: 18, marginLeft: 6 }}
                   />
                 )}
               </View>
@@ -230,7 +247,35 @@ const PostItem: React.FC<PostItemProps> = ({
             </View>
           </TouchableOpacity>
 
-          {/* <Text>{f}</Text> */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              // iOS shadow
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 3,
+              // Android shadow
+              elevation: 4,
+              backgroundColor: theme.background, // required for Android shadows
+              borderRadius: 50,
+              padding: 4, // optional for spacing
+            }}
+          >
+            <Ionicons name="time-outline" size={14} color="gray" />
+            <Text
+              style={{
+                color: theme.subtext,
+                fontWeight: "semibold",
+                fontSize: 10,
+                fontStyle: "italic",
+              }}
+            >
+              {moment(currentPost.createdAt).fromNow()}
+            </Text>
+          </View>
 
           <TouchableOpacity onPress={() => setOptionsVisible(true)}>
             <Feather name="more-vertical" size={20} color="gray" />
@@ -259,27 +304,51 @@ const PostItem: React.FC<PostItemProps> = ({
                 borderColor: theme.border,
               }}
             >
+              {/* Avatar */}
               <Image
-                source={{ uri: user?.imageUrl || userDetails?.image }}
+                source={{ uri: userDetails?.image || user?.imageUrl }}
                 style={{
                   height: 20,
                   width: 20,
                   borderRadius: 50,
-                  marginRight: 4,
+                  marginRight: 8,
                 }}
               />
-              <Text
-                style={{
-                  fontWeight: "bold",
-                  marginRight: 4,
-                  color: theme.text,
-                }}
-              >
-                {r.nickname}:
-              </Text>
-              <Text style={{ fontWeight: "500", color: "gray" }}>
-                {r.quote}
-              </Text>
+
+              {/* Right side: name/time + quote */}
+              <View style={{ flex: 1 }}>
+                {/* First row: name + time */}
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text
+                    style={{
+                      fontWeight: "bold",
+                      marginRight: 6,
+                      color: theme.text,
+                    }}
+                  >
+                    {r.nickname}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "gray" }}>
+                    <Text
+                      style={{
+                        color: theme.subtext,
+                        fontWeight: "semibold",
+                        fontSize: 10,
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {moment(r.createdAt).fromNow()}
+                    </Text>
+                  </Text>
+                </View>
+
+                {/* Second row: quote */}
+                <Text
+                  style={{ fontWeight: "500", color: "gray", marginTop: 2 }}
+                >
+                  {r.quote}
+                </Text>
+              </View>
             </View>
           ))}
 
@@ -297,6 +366,7 @@ const PostItem: React.FC<PostItemProps> = ({
                   source={{ uri: currentPost.media[0] }}
                   style={styles.oneImage}
                   resizeMode="cover"
+                  repeat
                   controls
                   paused={!isVisible}
                 />
@@ -338,7 +408,7 @@ const PostItem: React.FC<PostItemProps> = ({
                             resizeMode="cover"
                             paused={!isVisible}
                             repeat
-                            controls={false}
+                            controls
                           />
                         ) : (
                           <Image
@@ -401,6 +471,7 @@ const PostItem: React.FC<PostItemProps> = ({
 
         {/* Actions */}
         <View style={[styles.actions, { borderColor: theme.border }]}>
+          {/* Like */}
           <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
             <Animated.View style={{ transform: [{ scale: likeScale }] }}>
               <AntDesign
@@ -409,11 +480,12 @@ const PostItem: React.FC<PostItemProps> = ({
                 color={isLiked ? "red" : "gray"}
               />
             </Animated.View>
-            {currentPost.likes?.length > 0 && (
-              <Text style={styles.count}>{currentPost.likes?.length}</Text>
-            )}
+            <Text style={styles.count}>
+              {currentPost.likes?.length > 0 ? currentPost.likes.length : " "}
+            </Text>
           </TouchableOpacity>
 
+          {/* Comments */}
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() =>
@@ -421,11 +493,12 @@ const PostItem: React.FC<PostItemProps> = ({
             }
           >
             <Ionicons name="chatbubble-outline" size={20} color="gray" />
-            {currentPost.recasts.length > 0 && (
-              <Text style={styles.count}>{currentPost.commentsCount}</Text>
-            )}
+            <Text style={styles.count}>
+              {currentPost.commentsCount > 0 ? currentPost.commentsCount : " "}
+            </Text>
           </TouchableOpacity>
 
+          {/* Recast */}
           <TouchableOpacity
             onPress={() => handleRecast()}
             style={styles.actionButton}
@@ -437,11 +510,12 @@ const PostItem: React.FC<PostItemProps> = ({
                 color={isRecasted ? "green" : "gray"}
               />
             </Animated.View>
-            {currentPost.recasts?.length > 0 && (
-              <Text style={styles.count}>{currentPost.recasts.length}</Text>
-            )}
+            <Text style={styles.count}>
+              {pureRecasts.length > 0 ? pureRecasts.length : " "}
+            </Text>
           </TouchableOpacity>
 
+          {/* Recite */}
           <TouchableOpacity
             onPress={() => setQuoteVisible(true)}
             style={styles.actionButton}
@@ -451,10 +525,15 @@ const PostItem: React.FC<PostItemProps> = ({
               size={20}
               color="gray"
             />
+            <Text style={styles.count}>
+              {recites.length > 0 ? recites.length : " "}
+            </Text>
           </TouchableOpacity>
 
+          {/* Share */}
           <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
             <Ionicons name="share-social-outline" size={20} color="gray" />
+            <Text style={styles.count}> </Text>
           </TouchableOpacity>
         </View>
 
@@ -552,7 +631,13 @@ const styles = StyleSheet.create({
     gap: 4,
     padding: 10,
   },
-  count: { fontSize: 12, color: "gray", marginLeft: 4 },
+  count: {
+    marginLeft: 4,
+    fontSize: 13,
+    color: "gray",
+    minWidth: 12, // keeps space even if empty
+    textAlign: "center",
+  },
   recastedText: {
     fontSize: 12,
     color: "gray",
@@ -560,9 +645,22 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     paddingHorizontal: 10,
   },
-  oneImage: { width: "100%", height: 300, borderRadius: 8, marginVertical: 8 },
+  oneImage: {
+    width: "100%",
+    height: 300,
+    borderRadius: 8,
+    marginVertical: 8,
+    justifyContent: "space-between",
+  },
   mediaGrid: { flexDirection: "row", flexWrap: "wrap", marginVertical: 8 },
-  fourImages: { width: "48%", height: 150, padding: 2 },
+  fourImages: {
+    flexBasis: "49%", // take half width but leave small spacing
+    flexGrow: 1,
+    height: 200,
+    marginBottom: 4,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.5)",

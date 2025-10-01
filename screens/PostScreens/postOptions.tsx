@@ -42,7 +42,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
   const options = [
     {
       label: "Report",
-      icon: <MaterialIcons name="report" size={20} color="red" />,
+      icon: <MaterialIcons name="report" size={20} color="gold" />,
     },
     isOwner
       ? {
@@ -109,8 +109,10 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
                 style={[
                   styles.optionText,
                   { color: theme.text },
-                  opt.label === "Delete" || opt.label === "Report"
+                  opt.label === "Delete"
                     ? { color: "red" }
+                    : opt.label === "Report"
+                    ? { color: "gold" } // or "yellow"
                     : {},
                 ]}
               >
@@ -120,7 +122,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
           </TouchableOpacity>
         ))}
         <TouchableOpacity
-          style={[styles.optionButton, { marginTop: 8 }]}
+          style={[styles.optionButton, { marginTop: 8, borderColor: theme.border }]}
           onPress={onClose}
         >
           <Text
@@ -152,5 +154,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   optionContent: { flexDirection: "row", alignItems: "center", gap: 12 },
-  optionText: { fontSize: 16 },
+  optionText: { fontSize: 16, textAlign: "center" },
 });

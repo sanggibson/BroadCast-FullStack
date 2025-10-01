@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SignUpScreen from "@/screens/AuthScreens/SignUpScreen";
 import LocationSelection from "@/screens/AuthScreens/LocationSelection";
@@ -24,9 +24,21 @@ const RootNavigator = () => {
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
 
-  // Don’t render anything until Clerk is loaded
-  if (!isLoaded) {
-    return null; // you can swap this with a SplashScreen
+  const [showSplash, setShowSplash] = useState(true);
+
+  // Keep splash for at least 1.5s (adjust as needed)
+  useEffect(() => {
+    if (isLoaded) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded]);
+
+  // Show splash while Clerk loads OR timer not finished
+  if (!isLoaded || showSplash) {
+    return <SplashScreen />;
   }
 
   // Normalize metadata (handle "true" string or boolean)
@@ -57,7 +69,6 @@ const RootNavigator = () => {
       )}
 
       {/* Secondary screens */}
-      <Stack.Screen name="SplashScreen" component={SplashScreen} />
       <Stack.Screen name="CommentsScreen" component={CommentsScreen} />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       <Stack.Screen name="GoLive" component={LiveStreamScreen} />
@@ -69,6 +80,7 @@ const RootNavigator = () => {
       <Stack.Screen name="AboutScreen" component={AboutScreen} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen} />
     </Stack.Navigator>
   );
 };

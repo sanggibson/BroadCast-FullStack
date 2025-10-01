@@ -152,6 +152,8 @@ const verifyRoutes = require("./src/routes/verify.routes");
 const streamRoutes = require("./src/routes/stream.routes");
 const stripeRoutes = require("./src/routes/stripe.routes");
 const newsRoutes = require("./src/routes/news.routes");
+// const replyRoutes = require("./src/routes/reply.routes");
+
 
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -163,6 +165,7 @@ app.use("/api", verifyRoutes);
 app.use("/api/stream", streamRoutes);
 app.use("/api/stripe", stripeRoutes);
 app.use("/api/news", newsRoutes);
+// app.use("/api/replies", replyRoutes);
 
 // ✅ Start server with LAN binding
 server.listen(PORT, "0.0.0.0", () => {

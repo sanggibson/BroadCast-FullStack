@@ -185,6 +185,7 @@ const ProfileScreen = () => {
 
     const player = useVideoPlayer(item.url, (p) => {
       p.loop = true;
+       p.muted = true; 
       p.play();
     });
 
@@ -193,8 +194,9 @@ const ProfileScreen = () => {
         <VideoView
           style={mediaStyle}
           player={player}
-          allowsFullscreen
-          allowsPictureInPicture
+          // allowsFullscreen
+          // allowsPictureInPicture
+                   
         />
       </View>
     );

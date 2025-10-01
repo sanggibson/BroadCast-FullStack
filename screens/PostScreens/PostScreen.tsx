@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import io, { Socket } from "socket.io-client";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useUser } from "@clerk/clerk-expo";
 
@@ -31,6 +31,7 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isFocused = useIsFocused(); // ✅ detect screen focus
   const socketRef = useRef<Socket | null>(null);
 
   const { theme, isDark } = useTheme();
@@ -93,28 +94,27 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
     };
   }, [currentLevel]);
 
- if (loading && !refreshing) {
-   return (
-     <View
-       style={{
-         flex: 1,
-         justifyContent: "center",
-         alignItems: "center",
-         backgroundColor: theme.background,
-       }}
-     >
-       {/* Logo or app icon */}
-       <Image
-         source={require("@/assets/icon.jpg")}
-         style={{ height: 50, width: 50, borderRadius: 25, marginBottom: 12 }}
-       />
+  if (loading && !refreshing) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.background,
+        }}
+      >
+        {/* Logo or app icon */}
+        <Image
+          source={require("@/assets/icon.jpg")}
+          style={{ height: 50, width: 50, borderRadius: 25, marginBottom: 12 }}
+        />
 
-       {/* Activity loader */}
-       <ActivityIndicator size="small" color={theme.text} />
-     </View>
-   );
- }
-
+        {/* Activity loader */}
+        <ActivityIndicator size="small" color={theme.text} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
@@ -131,13 +131,13 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
         renderItem={({ item }) => (
           <PostItem
             post={item}
-            isVisible={visiblePostId === item._id} // 👈 true if this post is in view
+            isVisible={visiblePostId === item._id && isFocused} // 👈 true if this post is in view
             currentUserId={currentUserId}
             currentUserNickname={currentUserNickname}
             socket={socketRef.current}
-            handleDeletePost={(postId: any) =>
-              setPosts((prev) => prev.filter((p) => p._id !== postId))
-            }
+            // handleDeletePost={(postId: any) =>
+            //   setPosts((prev) => prev.filter((p) => p._id !== postId))
+            // }
           />
         )}
         ListHeaderComponent={<HeaderComponent />}

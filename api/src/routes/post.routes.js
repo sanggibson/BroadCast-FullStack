@@ -10,21 +10,22 @@ module.exports = (io) => {
     `level-${levelType}-${levelValue || "all"}`;
 
   // ✅ Get posts
-  router.get("/", async (req, res) => {
-    try {
-      const { levelType, levelValue } = req.query;
+router.get("/", async (req, res) => {
+  try {
+    const { levelType, levelValue } = req.query;
 
-      const filter = {};
-      if (levelType) filter.levelType = levelType;
-      if (levelValue) filter.levelValue = levelValue;
+    const filter = { isDeleted: false }; // 👈 only show posts that are not deleted
+    if (levelType) filter.levelType = levelType;
+    if (levelValue) filter.levelValue = levelValue;
 
-      const posts = await Post.find(filter).sort({ createdAt: -1 });
-      res.status(200).json(posts);
-    } catch (err) {
-      console.error("❌ Error fetching posts:", err);
-      res.status(500).json({ message: "Server error" });
-    }
-  });
+    const posts = await Post.find(filter).sort({ createdAt: -1 });
+    res.status(200).json(posts);
+  } catch (err) {
+    console.error("❌ Error fetching posts:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
   // ✅ Create post
   router.post("/", async (req, res) => {
@@ -180,31 +181,36 @@ module.exports = (io) => {
   });
 
   // ✅ Delete post (with ownership check)
-  router.delete("/:id", async (req, res) => {
-    try {
-      const { userId } = req.body;
-      const post = await Post.findById(req.params.id);
-      if (!post) return res.status(404).json({ message: "Post not found" });
+router.delete("/:id", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const post = await Post.findById(req.params.id);
 
-      if (post.userId !== userId) {
-        return res
-          .status(403)
-          .json({ message: "Unauthorized to delete this post" });
-      }
+    if (!post) return res.status(404).json({ message: "Post not found" });
 
-      await post.deleteOne();
-
-      io.to(getRoomName(post.levelType, post.levelValue)).emit(
-        "deletePost",
-        post._id
-      );
-
-      res.status(200).json({ message: "Post deleted", postId: req.params.id });
-    } catch (err) {
-      console.error("❌ Error deleting post:", err);
-      res.status(500).json({ message: "Server error" });
+    if (post.userId !== userId) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to delete this post" });
     }
-  });
+
+    // Soft delete instead of hard delete
+    post.isDeleted = true;
+    await post.save();
+
+    // Notify clients in that room
+    io.to(getRoomName(post.levelType, post.levelValue)).emit(
+      "deletePost",
+      post._id
+    );
+
+    res.status(200).json({ message: "Post hidden", postId: req.params.id });
+  } catch (err) {
+    console.error("❌ Error deleting post:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
   router.post("/:id/recast", async (req, res) => {
     try {
