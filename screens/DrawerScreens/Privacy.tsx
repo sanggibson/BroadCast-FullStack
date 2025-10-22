@@ -8,7 +8,7 @@ const Privacy = () => {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 80 }}
     >
       {/* Title */}
       <Text style={[styles.title, { color: theme.text }]}>Privacy Policy</Text>
@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 30,
+    paddingBottom: 80
   },
   title: {
     fontSize: 24,

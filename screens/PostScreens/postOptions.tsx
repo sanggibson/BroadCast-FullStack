@@ -37,7 +37,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
 }) => {
   const { theme } = useTheme();
   const isOwner = currentUserId === post.userId;
-  const postLink = `http://${process.env.API_URL}/api/posts/${post._id}`;
+  const postLink = `http://192.168.100.4:3000/api/posts/${post._id}`;
 
   const options = [
     {
@@ -101,7 +101,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
           <TouchableOpacity
             key={opt.label}
             style={[styles.optionButton, { borderBottomColor: theme.border }]}
-            onPress={() => handleOption(opt.label)}
+            onPress={() => handleOption(opt.label)} // ✅ call the proper handler
           >
             <View style={styles.optionContent}>
               {opt.icon}
@@ -112,7 +112,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
                   opt.label === "Delete"
                     ? { color: "red" }
                     : opt.label === "Report"
-                    ? { color: "gold" } // or "yellow"
+                    ? { color: "gold" }
                     : {},
                 ]}
               >
@@ -121,8 +121,12 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
             </View>
           </TouchableOpacity>
         ))}
+
         <TouchableOpacity
-          style={[styles.optionButton, { marginTop: 8, borderColor: theme.border }]}
+          style={[
+            styles.optionButton,
+            { marginTop: 8, borderColor: theme.border },
+          ]}
           onPress={onClose}
         >
           <Text
@@ -147,7 +151,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
-    borderWidth: 1,
+    // borderWidth: 1,
   },
   optionButton: {
     paddingVertical: 15,

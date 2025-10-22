@@ -1,18 +1,15 @@
-
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   Image,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Dimensions,
+  TouchableOpacity,
   StatusBar,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute, useNavigation } from "@react-navigation/native";
-import type { RootStackParamList } from "../../types/navigation";
 import {
   Ionicons,
   AntDesign,
@@ -21,19 +18,20 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import moment from "moment";
+import Video from "react-native-video";
+import axios from "axios";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { useUser } from "@clerk/clerk-expo";
+import { useTheme } from "@/context/ThemeContext";
+import { useLevel } from "@/context/LevelContext";
+import type { RootStackParamList } from "../../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
-import { useTheme } from "@/context/ThemeContext";
-import axios from "axios";
-import { useUser } from "@clerk/clerk-expo";
-import { useLevel } from "@/context/LevelContext";
-import Video from "react-native-video";
 
-const BASE_URL = "http://192.168.100.4:3000/api";
+// const BASE_URL = "http://192.168.100.4:3000/api";
+const { width, height } = Dimensions.get("window");
 
 type PostDetailRouteProp = RouteProp<RootStackParamList, "PostDetail">;
-
-const { width } = Dimensions.get("window");
 
 const PostDetailScreen = () => {
   const route = useRoute<PostDetailRouteProp>();
@@ -45,8 +43,10 @@ const PostDetailScreen = () => {
   const { userDetails } = useLevel();
 
   const [post, setPost] = useState(route.params.post);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const videoRefs = useRef<{ [key: number]: Video | null }>({});
 
-  // ----------------- LIKE HANDLER -----------------
+  // Handle like
   const handleLike = async () => {
     try {
       setPost((prev) => {
@@ -61,7 +61,7 @@ const PostDetailScreen = () => {
         };
       });
 
-      await axios.post(`${BASE_URL}/posts/${post._id}/like`, {
+      await axios.post(`http://192.168.100.4:3000/posts/${post._id}/like`, {
         userId: currentUser._id,
       });
     } catch (err) {
@@ -70,60 +70,37 @@ const PostDetailScreen = () => {
     }
   };
 
-  // ----------------- RETWEET HANDLER -----------------
   const handleRetweet = (id: string) => {
     console.log("Retweeted", id);
   };
 
-  // ----------------- MEDIA GRID -----------------
-  const renderMediaGrid = () => {
-    if (!post.media || post.media.length === 0) return null;
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
 
-    return post.media.map((uri: string, index: number) => {
-      const isVideo = uri.endsWith(".mp4");
+  const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
 
-      // Single media
-      if (post.media.length === 1) {
-        return isVideo ? (
-          <Video
-            key={index}
-            source={{ uri }}
-            style={styles.singleMedia}
-            resizeMode="cover"
-            repeat
-            // muted
-            controls
-          />
-        ) : (
-          <Image
-            key={index}
-            source={{ uri }}
-            style={styles.singleMedia}
-            resizeMode="cover"
-          />
-        );
-      }
-
-      // Multiple media (stacked)
-      return isVideo ? (
-        <Video
-          key={index}
-          source={{ uri }}
-          style={styles.multiMedia}
-          resizeMode="cover"
-          repeat
-          // muted
-          controls
-        />
-      ) : (
-        <Image
-          key={index}
-          source={{ uri }}
-          style={styles.multiMedia}
-          resizeMode="cover"
-        />
-      );
-    });
+  const renderItem = ({ item, index }: { item: string; index: number }) => {
+    const isVideo = item.endsWith(".mp4");
+    return isVideo ? (
+      <Video
+        ref={(ref) => (videoRefs.current[index] = ref)}
+        source={{ uri: item }}
+        style={styles.singleMedia}
+        resizeMode="cover"
+        repeat
+        paused={currentIndex !== index}
+        controls
+      />
+    ) : (
+      <Image
+        source={{ uri: item }}
+        style={styles.singleMedia}
+        resizeMode="cover"
+      />
+    );
   };
 
   return (
@@ -136,60 +113,61 @@ const PostDetailScreen = () => {
         barStyle={isDark ? "light-content" : "dark-content"}
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.userRow}>
-            <Image
-              source={{ uri: userDetails?.image || user?.imageUrl }}
-              style={styles.userImg}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.userName, { color: theme.text }]}>
-                {user?.firstName}
-              </Text>
-              {user?.lastName && (
-                <Text style={styles.nickname}>@{user?.lastName}</Text>
-              )}
-            </View>
-            <Text style={styles.time}>{moment(post.createdAt).fromNow()}</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.userRow}>
+          <Image
+            source={{ uri: userDetails?.image || user?.imageUrl }}
+            style={styles.userImg}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {user?.firstName}
+            </Text>
+            {user?.lastName && (
+              <Text style={styles.nickname}>@{user?.lastName}</Text>
+            )}
           </View>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={26} color={isDark ? "#fff" : "#000"} />
-          </TouchableOpacity>
+          <Text style={styles.time}>{moment(post.createdAt).fromNow()}</Text>
         </View>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="close" size={26} color={isDark ? "#fff" : "#000"} />
+        </TouchableOpacity>
+      </View>
 
-        {/* Media Grid */}
-        {renderMediaGrid()}
+      {/* Media FlatList */}
+      <FlatList
+        data={post.media}
+        renderItem={renderItem}
+        keyExtractor={(_, i) => i.toString()}
+        horizontal
+        pagingEnabled
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        showsHorizontalScrollIndicator={false}
+      />
 
-        {/* Caption */}
-        {post.caption && (
-          <Text style={[styles.caption, { color: theme.text }]}>
-            {post.caption}
-          </Text>
-        )}
-      </ScrollView>
-
-      {/* Floating actions */}
-      <View style={styles.actionsColumn}>
+      {/* Action Buttons */}
+      <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.action} onPress={handleLike}>
           <AntDesign
             name={post.likes?.includes(currentUser._id) ? "heart" : "hearto"}
             size={20}
-            color={post.likes?.includes(currentUser._id) ? "red" : "white"}
+            color={post.likes?.includes(currentUser._id) ? "red" : theme.text}
           />
-          <Text style={styles.actionText}>{post.likes?.length}</Text>
+          <Text style={[styles.actionText, { color: theme.text }]}>
+            {post.likes?.length}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.action}
           onPress={() => navigation.navigate("CommentsScreen", { post })}
         >
-          <Feather name="message-circle" size={20} color="white" />
-          <Text style={styles.actionText}>{post.commentsCount}</Text>
+          <Feather name="message-circle" size={20} color={theme.text} />
+          <Text style={[styles.actionText, { color: theme.text }]}>
+            {post.commentsCount}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -199,25 +177,38 @@ const PostDetailScreen = () => {
           <FontAwesome5
             name="retweet"
             size={20}
-            color={post.originalPostId ? "green" : "white"}
+            color={post.originalPostId ? "green" : theme.text}
           />
-          <Text style={styles.actionText}>{post.retweets?.length}</Text>
+          <Text style={[styles.actionText, { color: theme.text }]}>
+            {post.retweets?.length}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.action}>
           <MaterialCommunityIcons
             name="comment-quote-outline"
             size={20}
-            color="white"
+            color={theme.text}
           />
-          <Text style={styles.actionText}>{post.rcast}</Text>
+          <Text style={[styles.actionText, { color: theme.text }]}>
+            {post.rcast}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.action}>
-          <Feather name="share" size={20} color="white" />
-          <Text style={styles.actionText}>{post.shares}</Text>
+          <Feather name="share" size={20} color={theme.text} />
+          <Text style={[styles.actionText, { color: theme.text }]}>
+            {post.shares}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Caption */}
+      {post.caption && (
+        <Text style={[styles.caption, { color: theme.text }]}>
+          {post.caption}
+        </Text>
+      )}
     </SafeAreaView>
   );
 };
@@ -260,27 +251,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  singleMedia: { width: "100%", height: 300, borderRadius: 10 },
-  multiMedia: { width: "100%", height: 380, marginBottom: 6, borderRadius: 10 },
+  singleMedia: { width, height: 380, borderRadius: 10 },
 
-  actionsColumn: {
-    position: "absolute",
-    right: 15,
-    bottom: 100,
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "rgba(128,128,128,0.4)",
-    borderRadius: 50,
-    padding: 10,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
   },
   action: {
+    flexDirection: "row",
     alignItems: "center",
-    marginVertical: 15,
   },
   actionText: {
-    marginTop: 4,
-    fontSize: 13,
+    marginLeft: 6,
+    fontSize: 14,
     fontWeight: "600",
-    color: "white",
   },
 });
-

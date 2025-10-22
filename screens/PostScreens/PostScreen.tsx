@@ -7,6 +7,7 @@ import {
   Text,
   Image,
   StatusBar,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import io, { Socket } from "socket.io-client";
@@ -20,6 +21,7 @@ import ListEmptyComponent from "./ListEmptyComponent";
 import { Post, RootStackParamList } from "@/types/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LoaderKitView } from "react-native-loader-kit";
 
 const BASE_URL = `http://192.168.100.4:3000`;
 
@@ -53,10 +55,9 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
   const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
 
   /** Fetch posts */
+  /** Fetch posts */
   const fetchPosts = useCallback(async () => {
     try {
-      setLoading(true);
-      setPosts([]); // clear old posts
       const url = `${BASE_URL}/api/posts?levelType=${currentLevel.type}&levelValue=${currentLevel.value}`;
       const res = await axios.get<Post[]>(url);
       setPosts(res.data ?? []);
@@ -67,6 +68,19 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
       setRefreshing(false);
     }
   }, [currentLevel]);
+
+  // 👇 instantly activate loader whenever user switches level
+  useEffect(() => {
+    setLoading(true);
+  }, [currentLevel]);
+
+  /** Refetch when screen gains focus */
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [fetchPosts])
+  );
+
 
   /** Refetch when screen gains focus */
   useFocusEffect(
@@ -94,6 +108,34 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
     };
   }, [currentLevel]);
 
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await axios.delete(`${BASE_URL}/api/posts/${postId}`, {
+        data: { userId: currentUserId },
+      });
+      setPosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch (err) {
+      console.error("❌ Delete failed:", err);
+      Alert.alert("Error", "Failed to delete post.");
+    }
+  };
+
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.on("deletePost", (deletedPostId: string) => {
+      setPosts((prev) => prev.filter((p) => p._id !== deletedPostId));
+    });
+
+    return () => {
+      socket.off("deletePost");
+    };
+  }, []);
+
+
+
   if (loading && !refreshing) {
     return (
       <View
@@ -104,20 +146,24 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
           backgroundColor: theme.background,
         }}
       >
-        {/* Logo or app icon */}
-        <Image
-          source={require("@/assets/icon.jpg")}
-          style={{ height: 50, width: 50, borderRadius: 25, marginBottom: 12 }}
+        <StatusBar
+          translucent
+          backgroundColor="transparent" // prevent the warning
+          barStyle={isDark ? "light-content" : "dark-content"}
         />
 
-        {/* Activity loader */}
-        <ActivityIndicator size="small" color={theme.text} />
+        <LoaderKitView
+          style={{ width: 50, height: 50 }}
+          name={"BallScaleRippleMultiple"}
+          animationSpeedMultiplier={1.0} 
+          color={theme.text} 
+        />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Transparent StatusBar */}
       <StatusBar
         translucent
@@ -135,9 +181,7 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
             currentUserId={currentUserId}
             currentUserNickname={currentUserNickname}
             socket={socketRef.current}
-            // handleDeletePost={(postId: any) =>
-            //   setPosts((prev) => prev.filter((p) => p._id !== postId))
-            // }
+            handleDeletePost={handleDeletePost}
           />
         )}
         ListHeaderComponent={<HeaderComponent />}
@@ -153,14 +197,14 @@ const PostScreen: React.FC<Props> = ({ currentLevel }) => {
               setRefreshing(true);
               fetchPosts();
             }}
-            tintColor={theme.text} // iOS spinner color
+            tintColor={theme.subtext} // iOS spinner color
             colors={[theme.text]} // Android spinner color
           />
         }
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

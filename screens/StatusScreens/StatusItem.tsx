@@ -58,9 +58,9 @@ const StatusItem: React.FC<StatusItemProps> = ({
         >
           <Defs>
             <LinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#f58529" />
-              <Stop offset="50%" stopColor="#dd2a7b" />
-              <Stop offset="100%" stopColor="#feda75" />
+              <Stop offset="0%" stopColor="#00c6ff" />
+              <Stop offset="50%" stopColor="#0072ff" /> 
+              <Stop offset="100%" stopColor="#004e92" />
             </LinearGradient>
           </Defs>
 

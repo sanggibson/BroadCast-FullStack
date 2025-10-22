@@ -48,7 +48,7 @@ const NamesScreen = () => {
     setLastName,
     nickName = "",
     setNickName,
-    image = "",
+    image = user?.imageUrl,
     setImage,
   } = useUserOnboarding();
 
@@ -63,7 +63,7 @@ const NamesScreen = () => {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.7,
     });
@@ -202,7 +202,7 @@ const NamesScreen = () => {
   //     };
 
   //     const res = await axios.post(
-  //       "http://192.168.100.28:3000/api/users/create-user",
+  //       "http://192.168.100.4:3000/api/users/create-user",
   //       payload,
   //       { timeout: 5000 }
   //     );

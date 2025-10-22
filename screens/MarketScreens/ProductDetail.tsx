@@ -95,7 +95,7 @@ const ProductDetailScreen = () => {
 
       {/* Add to Cart */}
       <TouchableOpacity style={styles.buyButton}>
-        <Text style={styles.buyText}>Add to Cart</Text>
+        <Text style={styles.buyText}>Chat with Seller</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   buyButton: {
     backgroundColor: "#4caf50",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 50,
     alignItems: "center",
     marginTop: 20,
   },

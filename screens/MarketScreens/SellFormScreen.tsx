@@ -200,7 +200,7 @@ const SellFormScreen = () => {
         userId: user.id, // ✅ Use Clerk ID directly
       };
 
-      const res = await fetch(`http://192.168.100.4:3000/api/products`, {
+      const res = await fetch(`http://192.168.100.28:3000/api/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProduct),
@@ -338,7 +338,12 @@ const SellFormScreen = () => {
               color={theme.subtext}
             />
             {categories.map((cat, index) => (
-              <Picker.Item key={index} label={cat} value={cat} />
+              <Picker.Item
+                key={index}
+                label={cat}
+                value={cat}
+                color={theme.text}
+              />
             ))}
           </Picker>
         </View>

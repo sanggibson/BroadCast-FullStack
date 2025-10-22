@@ -9,6 +9,7 @@ import {
   StatusBar,
   Animated,
   Alert,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -48,29 +49,50 @@ const StatusViewScreen = () => {
   const route = useRoute<StatusViewRouteProp>();
   const navigation = useNavigation<StatusViewNavigationProp>();
   const { userStatuses } = route.params as RouteParams;
-  const { userId } = useAuth(); // Clerk gives logged-in user id
+  const { userId } = useAuth();
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
-
   const currentStatus = userStatuses[currentIndex];
   const { theme, isDark } = useTheme();
 
-  // Auto-progress
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Handle animation (auto-progress)
   useEffect(() => {
     progress.setValue(0);
-    const animation = Animated.timing(progress, {
+    animationRef.current = Animated.timing(progress, {
       toValue: 1,
       duration: STATUS_DURATION,
       useNativeDriver: false,
     });
 
-    animation.start(({ finished }) => {
-      if (finished) nextStatus();
-    });
+    if (!isPaused) {
+      animationRef.current.start(({ finished }) => {
+        if (finished) nextStatus();
+      });
+    }
 
-    return () => animation.stop();
+    return () => animationRef.current?.stop();
   }, [currentIndex]);
+
+  // Pause/resume effect
+  useEffect(() => {
+    if (isPaused) {
+      animationRef.current?.stop();
+    } else {
+      const remaining = (1 - progress.__getValue()) * STATUS_DURATION; // resume from where it stopped
+      animationRef.current = Animated.timing(progress, {
+        toValue: 1,
+        duration: remaining,
+        useNativeDriver: false,
+      });
+      animationRef.current.start(({ finished }) => {
+        if (finished) nextStatus();
+      });
+    }
+  }, [isPaused]);
 
   const nextStatus = () => {
     if (currentIndex < userStatuses.length - 1) {
@@ -96,10 +118,10 @@ const StatusViewScreen = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `http://192.168.100.4:3000/api/status/${currentStatus._id}`,
+                `http://192.168.100.28:3000/api/status/${currentStatus._id}`,
                 { data: { userId } }
               );
-              navigation.goBack(); // close after delete
+              navigation.goBack();
             } catch (err) {
               console.error("❌ Error deleting status:", err);
               Alert.alert("Error", "Failed to delete status.");
@@ -118,94 +140,101 @@ const StatusViewScreen = () => {
         barStyle={isDark ? "light-content" : "dark-content"}
       />
 
-      {/* Status content */}
-      <View style={styles.content}>
-        {currentStatus.media?.length > 0 ? (
-          <Image
-            source={{ uri: currentStatus.media[0] }}
-            style={styles.media}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text style={[styles.textStatus, { color: theme.text }]}>
-            {currentStatus.caption}
-          </Text>
-        )}
-      </View>
-
-      {/* Top overlay (progress + buttons) */}
-      <LinearGradient
-        colors={["rgba(0,0,0,0.7)", "transparent"]}
-        style={styles.topOverlay}
+      {/* Wrap entire content in Pressable to handle pause/resume */}
+      <Pressable
+        style={{ flex: 1 }}
+        onPressIn={() => setIsPaused(true)} // 👈 pause when touched
+        onPressOut={() => setIsPaused(false)} // 👈 resume when released
       >
-        {/* Progress bars */}
-        <View style={styles.progressBarContainer}>
-          {userStatuses.map((_, index) => {
-            if (index < currentIndex) {
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.progressBar,
-                    { flex: 1, backgroundColor: "#fff" },
-                  ]}
-                />
-              );
-            } else if (index === currentIndex) {
-              return (
-                <Animated.View
-                  key={index}
-                  style={[
-                    styles.progressBar,
-                    { flex: progress, backgroundColor: "#fff" },
-                  ]}
-                />
-              );
-            } else {
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.progressBar,
-                    { flex: 1, backgroundColor: "rgba(255,255,255,0.4)" },
-                  ]}
-                />
-              );
-            }
-          })}
+        {/* Main Content */}
+        <View style={styles.content}>
+          {currentStatus.media?.length > 0 ? (
+            <Image
+              source={{ uri: currentStatus.media[0] }}
+              style={styles.media}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={[styles.textStatus, { color: theme.text }]}>
+              {currentStatus.caption}
+            </Text>
+          )}
         </View>
 
-        {/* Close button */}
-        <TouchableOpacity
-          style={styles.closeBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="close" size={28} color="#fff" />
-        </TouchableOpacity>
-
-        {/* Delete button (only if mine) */}
-        {currentStatus.userId === userId && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-            <Ionicons name="trash" size={24} color="red" />
-          </TouchableOpacity>
-        )}
-      </LinearGradient>
-
-      {/* Bottom caption */}
-      {currentStatus.caption ? (
+        {/* Top overlay (progress + buttons) */}
         <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
-          style={styles.bottomOverlay}
+          colors={["rgba(0,0,0,0.7)", "transparent"]}
+          style={styles.topOverlay}
         >
-          <Text style={styles.caption}>{currentStatus.caption}</Text>
-        </LinearGradient>
-      ) : null}
+          {/* Progress bars */}
+          <View style={styles.progressBarContainer}>
+            {userStatuses.map((_, index) => {
+              if (index < currentIndex) {
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.progressBar,
+                      { flex: 1, backgroundColor: "#fff" },
+                    ]}
+                  />
+                );
+              } else if (index === currentIndex) {
+                return (
+                  <Animated.View
+                    key={index}
+                    style={[
+                      styles.progressBar,
+                      { flex: progress, backgroundColor: "#fff" },
+                    ]}
+                  />
+                );
+              } else {
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.progressBar,
+                      { flex: 1, backgroundColor: "rgba(255,255,255,0.4)" },
+                    ]}
+                  />
+                );
+              }
+            })}
+          </View>
 
-      {/* Navigation zones */}
-      <View style={styles.nav}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={prevStatus} />
-        <TouchableOpacity style={{ flex: 1 }} onPress={nextStatus} />
-      </View>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Delete button (only if mine) */}
+          {currentStatus.userId === userId && (
+            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+              <Ionicons name="trash" size={24} color="red" />
+            </TouchableOpacity>
+          )}
+        </LinearGradient>
+
+        {/* Bottom caption */}
+        {currentStatus.caption ? (
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)"]}
+            style={styles.bottomOverlay}
+          >
+            <Text style={styles.caption}>{currentStatus.caption}</Text>
+          </LinearGradient>
+        ) : null}
+
+        {/* Navigation zones */}
+        <View style={styles.nav}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={prevStatus} />
+          <TouchableOpacity style={{ flex: 1 }} onPress={nextStatus} />
+        </View>
+      </Pressable>
     </SafeAreaView>
   );
 };
@@ -221,7 +250,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: 40,
+    paddingTop: 10, // 👈 reduced from 40 to respect SafeArea
     paddingHorizontal: 10,
   },
   bottomOverlay: {
@@ -239,13 +268,13 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     position: "absolute",
-    top: 45,
+    top: 20, // 👈 adjusted to SafeAreaView
     right: 20,
     padding: 6,
   },
   deleteBtn: {
     position: "absolute",
-    top: 45,
+    top: 20,
     left: 20,
     padding: 6,
   },

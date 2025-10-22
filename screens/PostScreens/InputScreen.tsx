@@ -218,7 +218,7 @@ const InputScreen = () => {
         payload
       );
 
-      console.log("✅ Post saved:", res.data);
+      // console.log("✅ Post saved:", res.data);
 
       // Reset state
       setCast("");
@@ -313,20 +313,37 @@ const InputScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ height: 110, marginBottom: 10 }}>
+          <View style={{ height: 300, marginBottom: 10 }}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ alignItems: "center" }}
+              contentContainerStyle={{
+                alignItems: "center",
+                gap: 10,
+                paddingHorizontal: 6,
+              }}
             >
               {media.map((item, index) => (
-                <View key={index} style={styles.previewWrapper}>
+                <View
+                  key={index}
+                  style={{
+                    position: "relative",
+                    width: 250,
+                    height: 300,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
                   {item.type === "image" ? (
-                    <Image source={{ uri: item.uri }} style={styles.postImg} />
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="cover"
+                    />
                   ) : (
                     <Video
                       source={{ uri: item.uri }}
-                      style={styles.postImg}
+                      style={{ width: "100%", height: "100%" }}
                       resizeMode="cover"
                       controls
                       paused
@@ -336,7 +353,7 @@ const InputScreen = () => {
                     style={styles.removeButton}
                     onPress={() => removeMedia(item.uri)}
                   >
-                    <Ionicons name="close-circle" size={22} color="red" />
+                    <Ionicons name="close-circle" size={24} color="red" />
                   </TouchableOpacity>
                 </View>
               ))}

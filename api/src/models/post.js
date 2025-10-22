@@ -19,7 +19,7 @@ const postSchema = new mongoose.Schema(
         recastedAt: { type: Date, default: Date.now },
       },
     ],
-
+    views: { type: Number, default: 0 },
     commentsCount: { type: Number, default: 0 },
     user: {
       clerkId: String,

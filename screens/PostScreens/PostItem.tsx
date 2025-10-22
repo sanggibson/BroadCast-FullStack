@@ -29,8 +29,6 @@ import { useTheme } from "@/context/ThemeContext";
 import * as Linking from "expo-linking";
 import moment from "moment";
 
-const API_URL = "http://192.168.100.4:3000/api/posts";
-
 interface PostItemProps {
   post: any;
   currentUserId?: string;
@@ -57,7 +55,7 @@ const PostItem: React.FC<PostItemProps> = ({
   const [loading, setLoading] = useState(false);
   const [verificationStarted, setVerificationStarted] = useState(false);
   const [verified, setVerified] = useState(false);
-
+  const [isMuted, setIsMuted] = useState(true); // default muted
   const { theme } = useTheme();
   const [linkData, setLinkData] = useState<{
     url: string;
@@ -84,12 +82,18 @@ const PostItem: React.FC<PostItemProps> = ({
   /** Real-time socket updates */
   useEffect(() => {
     if (!socket) return;
+    if (!currentPost?._id) return;
 
     const handleUpdate = (updatedPost: any) => {
-      if (updatedPost._id === currentPost._id) setCurrentPost(updatedPost);
+      if (updatedPost._id === currentPost._id) {
+        setCurrentPost(updatedPost);
+      }
     };
+
     const handleDelete = (deletedPostId: any) => {
-      if (deletedPostId === currentPost._id) handleDeletePost?.(deletedPostId);
+      if (deletedPostId === currentPost._id) {
+        handleDeletePost?.(deletedPostId);
+      }
     };
 
     socket.on("updatePost", handleUpdate);
@@ -99,19 +103,7 @@ const PostItem: React.FC<PostItemProps> = ({
       socket.off("updatePost", handleUpdate);
       socket.off("deletePost", handleDelete);
     };
-  }, [socket, currentPost, handleDeletePost]);
-
-  /** Like post */
-  // const handleLike = async () => {
-  //   if (!currentUserId) return;
-  //   try {
-  //     await axios.post(`${API_URL}/${currentPost._id}/like`, {
-  //       userId: currentUserId,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
+  }, [socket, currentPost?._id]); // ✅ only depend on post ID
 
   /** Like post */
   const handleLike = async () => {
@@ -132,9 +124,11 @@ const PostItem: React.FC<PostItemProps> = ({
     ]).start();
 
     try {
-      await axios.post(`${API_URL}/${currentPost._id}/like`, {
-        userId: currentUserId,
-      });
+      await axios.post(
+        `http://192.168.100.4:3000/api/posts/${currentPost._id}/like`,
+        { userId: currentUserId }
+      );
+      await incrementViews(); // ✅ Increase views
     } catch (err) {
       console.error(err);
       // Rollback if backend fails
@@ -147,11 +141,17 @@ const PostItem: React.FC<PostItemProps> = ({
     if (!currentUserId) return;
     setLoadingRecasts(true);
     try {
-      await axios.post(`${API_URL}/${currentPost._id}/recast`, {
-        userId: currentUserId,
-        nickname: user?.username || currentUserNickname || "anon",
-        quoteText: quote,
-      });
+      await axios.post(
+        `http://192.168.100.4:3000/api/posts/${currentPost._id}/recast`,
+        {
+          userId: currentUserId,
+          nickname: user?.username || currentUserNickname || "anon",
+          quoteText: quote,
+        }
+      );
+
+      await incrementViews(); // ✅ Add this line
+
       setQuoteVisible(false);
       setQuoteText("");
     } catch (err) {
@@ -161,11 +161,23 @@ const PostItem: React.FC<PostItemProps> = ({
     }
   };
 
+  const incrementViews = async () => {
+    try {
+      await axios.post(
+        `http://192.168.100.4:3000/api/posts/${currentPost._id}/view`
+      );
+      setCurrentPost((prev: any) => ({ ...prev, views: prev.views + 1 }));
+    } catch (err) {
+      console.error("View increment failed:", err);
+    }
+  };
+
   /** Share post */
   const handleShare = async () => {
     try {
-      const postLink = `${API_URL}/${currentPost._id}`;
+      const postLink = `http://192.168.100.4:3000/${currentPost._id}`;
       await Share.share({ message: `${currentPost.caption}\n${postLink}` });
+      await incrementViews(); // ✅ Add this line
     } catch (err) {
       console.error(err);
     }
@@ -208,7 +220,7 @@ const PostItem: React.FC<PostItemProps> = ({
     >
       <View
         style={{
-          marginVertical: 8,
+          marginVertical: 2,
           backgroundColor: theme.card,
           borderRadius: 10,
           elevation: 2,
@@ -225,9 +237,16 @@ const PostItem: React.FC<PostItemProps> = ({
             style={styles.userInfo}
           >
             <Image
-              source={{ uri: userDetails?.image || user?.imageUrl }}
+              source={
+                currentPost.user?.image?.trim()
+                  ? { uri: currentPost.user.image }
+                  : currentPost.user?.clerkId === user?.id && user?.imageUrl
+                  ? { uri: user.imageUrl }
+                  : require("@/assets/icon.jpg") // 👈 fallback placeholder
+              }
               style={styles.avatar}
             />
+
             <View style={{ marginLeft: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text style={[styles.userName, { color: theme.text }]}>
@@ -243,6 +262,18 @@ const PostItem: React.FC<PostItemProps> = ({
               </View>
               <Text style={styles.nickName}>
                 @{currentPost.user?.nickName ?? "anon"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: "bold",
+                  fontStyle: "italic",
+                  color: theme.subtext,
+                }}
+              >
+                {currentPost.levelValue === "home"
+                  ? ""
+                  : `#${currentPost.levelValue} ${currentPost.levelType}`}
               </Text>
             </View>
           </TouchableOpacity>
@@ -285,7 +316,7 @@ const PostItem: React.FC<PostItemProps> = ({
             <PostOptionsModal
               post={currentPost}
               currentUserId={currentUserId!}
-              onDelete={handleDeletePost}
+              onDelete={(postId) => handleDeletePost?.(postId)}
               onClose={() => setOptionsVisible(false)}
             />
           )}
@@ -306,7 +337,7 @@ const PostItem: React.FC<PostItemProps> = ({
             >
               {/* Avatar */}
               <Image
-                source={{ uri: userDetails?.image || user?.imageUrl }}
+                source={{ uri: user?.imageUrl }}
                 style={{
                   height: 20,
                   width: 20,
@@ -328,7 +359,24 @@ const PostItem: React.FC<PostItemProps> = ({
                   >
                     {r.nickname}
                   </Text>
-                  <Text style={{ fontSize: 12, color: "gray" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      // iOS shadow
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 3,
+                      // Android shadow
+                      elevation: 4,
+                      backgroundColor: theme.background, // required for Android shadows
+                      borderRadius: 50,
+                      padding: 4, // optional for spacing
+                    }}
+                  >
+                    <Ionicons name="time-outline" size={14} color="gray" />
                     <Text
                       style={{
                         color: theme.subtext,
@@ -339,7 +387,7 @@ const PostItem: React.FC<PostItemProps> = ({
                     >
                       {moment(r.createdAt).fromNow()}
                     </Text>
-                  </Text>
+                  </View>
                 </View>
 
                 {/* Second row: quote */}
@@ -362,14 +410,34 @@ const PostItem: React.FC<PostItemProps> = ({
           <>
             {currentPost.media.length === 1 ? (
               currentPost.media[0].endsWith(".mp4") ? (
-                <Video
-                  source={{ uri: currentPost.media[0] }}
-                  style={styles.oneImage}
-                  resizeMode="cover"
-                  repeat
-                  controls
-                  paused={!isVisible}
-                />
+                <View>
+                  <Video
+                    source={{ uri: currentPost.media[0] }}
+                    style={styles.oneImage}
+                    resizeMode="cover"
+                    repeat
+                    controls
+                    paused={!isVisible}
+                    muted={isMuted}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      backgroundColor: "rgba(0,0,0,0.4)",
+                      borderRadius: 20,
+                      padding: 6,
+                    }}
+                    onPress={() => setIsMuted((prev) => !prev)}
+                  >
+                    <Ionicons
+                      name={isMuted ? "volume-mute" : "volume-high"}
+                      size={20}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                </View>
               ) : (
                 <Image
                   source={{ uri: currentPost.media[0] }}
@@ -383,20 +451,11 @@ const PostItem: React.FC<PostItemProps> = ({
                   .slice(0, 4)
                   .map((item: string, idx: number) => {
                     const isVideo = item.endsWith(".mp4");
-                    const total = currentPost.media.length;
-                    const isLast = idx === 3 && total > 4;
-
-                    // ✅ Check if it's the "3rd" item in a 3-media case
-                    const isThirdInThree = total === 3 && idx === 2;
+                    const remaining = currentPost.media.length - 4;
+                    const showOverlay = idx === 3 && remaining > 0; // 👈 show on 4th item
 
                     return (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.fourImages,
-                          isThirdInThree && { width: "100%" }, // stretch full width if 3rd item
-                        ]}
-                      >
+                      <View key={idx} style={styles.fourImages}>
                         {isVideo ? (
                           <Video
                             source={{ uri: item }}
@@ -408,7 +467,7 @@ const PostItem: React.FC<PostItemProps> = ({
                             resizeMode="cover"
                             paused={!isVisible}
                             repeat
-                            controls
+                            muted={isMuted}
                           />
                         ) : (
                           <Image
@@ -422,9 +481,26 @@ const PostItem: React.FC<PostItemProps> = ({
                           />
                         )}
 
-                        {isLast && (
-                          <View style={styles.overlay}>
-                            <Text style={styles.overlayText}>+{total - 4}</Text>
+                        {/* 🔢 Overlay if more than 4 */}
+                        {showOverlay && (
+                          <View
+                            style={{
+                              ...StyleSheet.absoluteFillObject,
+                              backgroundColor: "rgba(0,0,0,0.5)",
+                              borderRadius: 6,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 28,
+                                fontWeight: "bold",
+                              }}
+                            >
+                              +{remaining}
+                            </Text>
                           </View>
                         )}
                       </View>
@@ -434,6 +510,7 @@ const PostItem: React.FC<PostItemProps> = ({
             )}
           </>
         )}
+
         {currentPost.linkPreview && (
           <TouchableOpacity
             onPress={() => Linking.openURL(currentPost.linkPreview.url)}
@@ -488,9 +565,10 @@ const PostItem: React.FC<PostItemProps> = ({
           {/* Comments */}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() =>
-              navigation.navigate("CommentsScreen", { post: currentPost })
-            }
+            onPress={async () => {
+              await incrementViews(); // ✅ increment view
+              navigation.navigate("CommentsScreen", { post: currentPost });
+            }}
           >
             <Ionicons name="chatbubble-outline" size={20} color="gray" />
             <Text style={styles.count}>
@@ -517,7 +595,10 @@ const PostItem: React.FC<PostItemProps> = ({
 
           {/* Recite */}
           <TouchableOpacity
-            onPress={() => setQuoteVisible(true)}
+            onPress={async () => {
+              await incrementViews(); // ✅
+              setQuoteVisible(true);
+            }}
             style={styles.actionButton}
           >
             <MaterialCommunityIcons
@@ -529,6 +610,13 @@ const PostItem: React.FC<PostItemProps> = ({
               {recites.length > 0 ? recites.length : " "}
             </Text>
           </TouchableOpacity>
+
+          <View style={styles.actionButton}>
+            <Ionicons name="eye-outline" size={20} color="gray" />
+            <Text style={styles.count}>
+              {currentPost.views > 0 ? currentPost.views : " "}
+            </Text>
+          </View>
 
           {/* Share */}
           <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
@@ -632,7 +720,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   count: {
-    marginLeft: 4,
+    marginLeft: 2,
     fontSize: 13,
     color: "gray",
     minWidth: 12, // keeps space even if empty

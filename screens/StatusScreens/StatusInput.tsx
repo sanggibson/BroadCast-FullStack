@@ -168,34 +168,102 @@ const StatusInput = () => {
 
       {/* Media Preview */}
       {media.length > 0 && (
-        <View style={styles.mediaContainer}>
+        <View style={[styles.mediaContainer, { height: 300 }]}>
           {media.length === 1 ? (
-            media[0].type === "image" ? (
-              <Image
-                source={{ uri: media[0].uri }}
-                style={styles.singleMedia}
-              />
-            ) : (
-              <View style={styles.singleVideo}>
-                <Ionicons name="play-circle" size={80} color="#fff" />
-              </View>
-            )
+            <View
+              style={{ width: "100%", height: "100%", position: "relative" }}
+            >
+              {media[0].type === "image" ? (
+                <Image
+                  source={{ uri: media[0].uri }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: 12,
+                  }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: 12,
+                    backgroundColor: "#000",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="play-circle" size={80} color="#fff" />
+                </View>
+              )}
+
+              {/* ❌ Remove button (even for one item) */}
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  borderRadius: 20,
+                  padding: 4,
+                }}
+                onPress={() => removeMedia(media[0].uri)}
+              >
+                <Ionicons name="close-circle" size={26} color="red" />
+              </TouchableOpacity>
+            </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                alignItems: "center",
+                paddingHorizontal: 6,
+                gap: 10,
+              }}
+            >
               {media.map((m, index) => (
-                <View key={index} style={styles.mediaWrapper}>
+                <View
+                  key={index}
+                  style={{
+                    width: 250,
+                    height: 300,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
                   {m.type === "image" ? (
                     <Image
                       source={{ uri: m.uri }}
-                      style={styles.mediaPreview}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="cover"
                     />
                   ) : (
-                    <View style={styles.videoPreview}>
-                      <Ionicons name="play-circle" size={50} color="#fff" />
+                    <View
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#000",
+                      }}
+                    >
+                      <Ionicons name="play-circle" size={60} color="#fff" />
                     </View>
                   )}
+
+                  {/* ❌ Remove button for each item */}
                   <TouchableOpacity
-                    style={styles.removeButton}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      backgroundColor: "rgba(0,0,0,0.5)",
+                      borderRadius: 20,
+                      padding: 4,
+                    }}
                     onPress={() => removeMedia(m.uri)}
                   >
                     <Ionicons name="close-circle" size={22} color="red" />

@@ -6,108 +6,169 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
 import { useTheme } from "@/context/ThemeContext";
+import { LoaderKitView } from "react-native-loader-kit";
 
-// Replace with your backend URL
 const BASE_URL = "http://192.168.100.4:3000/api/users";
 
-const MembersScreen = ({ currentUserId }: { currentUserId: string }) => {
-  const [members, setMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+interface Member {
+  _id: string;
+  clerkId: string;
+  firstName: string;
+  lastName: string;
+  nickName: string;
+  image: string;
+  followers: string[];
+  isFollowing?: boolean;
+}
+
+interface MembersScreenProps {
+  currentUserId: string; // Clerk ID
+}
+
+const MembersScreen: React.FC<MembersScreenProps> = ({ currentUserId }) => {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
   const { theme, isDark } = useTheme();
-  // Fetch all members
-  const fetchMembers = async () => {
+
+  // ---------------- Fetch All Members ----------------
+  const fetchUsers = async () => {
     try {
-      setLoading(true);
-      const res = await axios.get(`${BASE_URL}`);
-      // Mark following state (based on if currentUserId is in their followers)
-      const updated = res.data.map((m: any) => ({
-        ...m,
-        isFollowing: m.followers?.includes(currentUserId),
-      }));
-      setMembers(updated);
-    } catch (err) {
-      console.error("Error fetching members:", err);
+      const response = await axios.get(BASE_URL, {
+        params: { clerkId: currentUserId },
+      });
+
+      // Filter out current user so they don’t see themselves first
+      const sorted = response.data.sort((a: Member, b: Member) => {
+        if (a.clerkId === currentUserId) return -1; // current user first
+        if (b.clerkId === currentUserId) return 1;
+        return 0;
+      });
+
+      setMembers(sorted);
+    } catch (error: any) {
+      console.error("❌ Error fetching users:", error.response?.data || error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMembers();
+    fetchUsers();
   }, []);
 
-  // Follow / Unfollow
-  const toggleFollow = async (memberId: string, isFollowing: boolean) => {
+  // ---------------- Follow / Unfollow ----------------
+  const toggleFollow = async (member: Member) => {
     try {
       const endpoint = `${BASE_URL}/${currentUserId}/${
-        isFollowing ? "unfollow" : "follow"
-      }/${memberId}`;
+        member.isFollowing ? "unfollow" : "follow"
+      }/${member.clerkId}`; // use clerkId, not _id
       await axios.post(endpoint);
 
       setMembers((prev) =>
         prev.map((m) =>
-          m._id === memberId ? { ...m, isFollowing: !isFollowing } : m
+          m.clerkId === member.clerkId
+            ? { ...m, isFollowing: !member.isFollowing }
+            : m
         )
       );
-    } catch (err) {
-      console.error("Error updating follow state:", err);
+    } catch (err: any) {
+      console.error(
+        "❌ Error updating follow state:",
+        err.response?.data || err.message
+      );
     }
   };
 
-  const renderMember = ({ item }: any) => (
-    <View style={styles.memberCard}>
-      {/* Left side: avatar + info */}
-      <View style={styles.userInfo}>
-        <Image source={{ uri: item.image }} style={styles.avatar} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>
-            {item.firstName} {item.lastName}
-          </Text>
-          <Text style={styles.username}>@{item.nickName}</Text>
+  // ---------------- Render Each Member ----------------
+  const renderMember = ({ item }: { item: Member }) => {
+    const isCurrentUser = item.clerkId === currentUserId;
+
+    return (
+      <View style={[styles.memberCard, { backgroundColor: theme.card }]}>
+        {/* Avatar + Info */}
+        <View style={styles.userInfo}>
+          <Image
+            source={{
+              uri:
+                item.image?.trim() !== ""
+                  ? item.image
+                  : `https://api.dicebear.com/7.x/initials/svg?seed=${
+                      item.firstName || "User"
+                    }`,
+            }}
+            style={styles.avatar}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.name, { color: theme.text }]}>
+              {item.firstName} {item.lastName}
+            </Text>
+            <Text style={[styles.username, { color: theme.subtext }]}>
+              @{item.nickName || "unknown"}
+            </Text>
+          </View>
         </View>
+
+        {/* Follow / Unfollow / You */}
+        {isCurrentUser ? (
+          <View style={styles.youChip}>
+            <Text style={styles.youText}>You</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              item.isFollowing ? styles.unfollowBtn : styles.followBtn,
+            ]}
+            onPress={() => toggleFollow(item)}
+          >
+            <Text
+              style={item.isFollowing ? styles.unfollowText : styles.followText}
+            >
+              {item.isFollowing ? "Unfollow" : "Follow"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
+    );
+  };
 
-      {/* Right side: Follow/Unfollow button */}
-      <TouchableOpacity
-        style={[
-          styles.button,
-          item.isFollowing ? styles.unfollowBtn : styles.followBtn,
-        ]}
-        onPress={() => toggleFollow(item._id, item.isFollowing)}
-      >
-        <Text
-          style={item.isFollowing ? styles.unfollowText : styles.followText}
-        >
-          {item.isFollowing ? "Unfollow" : "Follow"}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
+  // ---------------- UI ----------------
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      {/* Transparent StatusBar */}
       <StatusBar
         translucent
-        backgroundColor="transparent" // prevent the warning
+        backgroundColor="transparent"
         barStyle={isDark ? "light-content" : "dark-content"}
       />
-      <Text style={[styles.title, {color: theme.text}]}>Members ({members.length})</Text>
+
+      <Text style={[styles.title, { color: theme.text }]}>
+        Members ({members.length})
+      </Text>
+
       {loading ? (
-        <ActivityIndicator size="large" color="#1DA1F2" />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <LoaderKitView
+            style={{ width: 50, height: 50 }}
+            name="BallScaleRippleMultiple"
+            animationSpeedMultiplier={1.0}
+            color={theme.text}
+          />
+        </View>
       ) : (
         <FlatList
           data={members}
           renderItem={renderMember}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -116,18 +177,17 @@ const MembersScreen = ({ currentUserId }: { currentUserId: string }) => {
 
 export default MembersScreen;
 
+// ---------------- Styles ----------------
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fafafa", padding: 16 },
   title: {
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 12,
+    marginVertical: 12,
   },
   memberCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
     padding: 12,
     borderRadius: 14,
     shadowColor: "#000",
@@ -137,8 +197,8 @@ const styles = StyleSheet.create({
   },
   userInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
   avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
-  name: { fontSize: 16, fontWeight: "600", color: "#111" },
-  username: { fontSize: 14, color: "#666", marginTop: 2 },
+  name: { fontSize: 16, fontWeight: "600" },
+  username: { fontSize: 14, marginTop: 2 },
   button: {
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -149,4 +209,19 @@ const styles = StyleSheet.create({
   unfollowBtn: { borderColor: "#ccc", backgroundColor: "#fff" },
   followText: { color: "#fff", fontWeight: "600" },
   unfollowText: { color: "#333", fontWeight: "600" },
+
+  // "You" chip (Twitter style)
+  youChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#1DA1F2",
+    backgroundColor: "transparent",
+  },
+  youText: {
+    color: "#1DA1F2",
+    fontWeight: "600",
+    fontStyle: "italic",
+  },
 });

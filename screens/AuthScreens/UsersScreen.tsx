@@ -28,7 +28,7 @@ const UsersScreen = () => {
       renderItem={({ item }) => (
         <TouchableOpacity
           style={styles.userItem}
-          onPress={() => navigation.navigate("Chat", { user: item })}
+          onPress={() => navigation.navigate("ChatScreen", { user: item })}
         >
           <Text style={{ fontWeight: "bold" }}>{item.firstName}</Text>
           <Text style={{ color: "gray" }}>@{item.nickName}</Text>

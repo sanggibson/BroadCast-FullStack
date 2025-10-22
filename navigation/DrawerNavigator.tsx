@@ -197,7 +197,7 @@ const DrawerNavigator = () => {
               : "Home"
             : "Loading...",
           drawerIcon: ({ color, size }) => (
-            <Ionicons name="planet" size={size} color={color} />
+            <Ionicons name="planet-outline" size={size} color={color} />
           ),
         }}
       />

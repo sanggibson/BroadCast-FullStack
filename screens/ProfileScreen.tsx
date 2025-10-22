@@ -9,9 +9,10 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import {
   useNavigation,
   useFocusEffect,
@@ -185,7 +186,7 @@ const ProfileScreen = () => {
 
     const player = useVideoPlayer(item.url, (p) => {
       p.loop = true;
-       p.muted = true; 
+      p.muted = true;
       p.play();
     });
 
@@ -196,7 +197,6 @@ const ProfileScreen = () => {
           player={player}
           // allowsFullscreen
           // allowsPictureInPicture
-                   
         />
       </View>
     );
@@ -247,9 +247,22 @@ const ProfileScreen = () => {
       <View style={styles.headerRow}>
         <Text></Text>
         <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
-        <TouchableOpacity
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Feather
+            name={isDark ? "sun" : "moon"}
+            size={20}
+            color={theme.text}
+            style={{ marginRight: 8 }}
+          />
+          {/* <Text style={{ fontSize: 14, fontWeight: "500", color: theme.text }}>
+            {isDark ? "Light Mode" : "Dark Mode"}
+          </Text> */}
+          <Switch value={isDark} onValueChange={toggleTheme} />
+        </View>
+
+        {/* <TouchableOpacity
           onPress={() => navigation.navigate("ChatScreen")}
-        ></TouchableOpacity>
+        ></TouchableOpacity> */}
       </View>
 
       {/* User Info */}

@@ -190,29 +190,36 @@ router.post("/update-image", async (req, res) => {
   }
 });
 
-// ------------------- FOLLOW -------------------
-router.post("/:userId/follow/:targetId", async (req, res) => {
-  try {
-    const { userId, targetId } = req.params;
 
-    if (userId === targetId) {
+// ------------------- FOLLOW -------------------
+router.post("/:clerkId/follow/:targetClerkId", async (req, res) => {
+  try {
+    const { clerkId, targetClerkId } = req.params;
+
+    if (clerkId === targetClerkId) {
       return res.status(400).json({ error: "You cannot follow yourself" });
     }
 
-    const user = await User.findById(userId);
-    const target = await User.findById(targetId);
+    const user = await User.findOne({ clerkId });
+    const target = await User.findOne({ clerkId: targetClerkId });
 
     if (!user || !target) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // prevent duplicate follows
-    if (!target.followers.includes(userId)) {
-      target.followers.push(userId);
+    // Prevent duplicate follow
+    if (!target.followers.includes(clerkId)) {
+      target.followers.push(clerkId);
       await target.save();
     }
 
-    res.json({ success: true, target });
+    // Add to current user's following list
+    if (!user.following.includes(targetClerkId)) {
+      user.following.push(targetClerkId);
+      await user.save();
+    }
+
+    res.json({ success: true, message: "Followed successfully", target });
   } catch (error) {
     console.error("Error following:", error);
     res.status(500).json({ error: "Server error" });
@@ -220,45 +227,46 @@ router.post("/:userId/follow/:targetId", async (req, res) => {
 });
 
 // ------------------- UNFOLLOW -------------------
-router.post("/:userId/unfollow/:targetId", async (req, res) => {
+router.post("/:clerkId/unfollow/:targetClerkId", async (req, res) => {
   try {
-    const { userId, targetId } = req.params;
+    const { clerkId, targetClerkId } = req.params;
 
-    const target = await User.findById(targetId);
-    if (!target) {
-      return res.status(404).json({ error: "Target user not found" });
+    const user = await User.findOne({ clerkId });
+    const target = await User.findOne({ clerkId: targetClerkId });
+
+    if (!user || !target) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    target.followers = target.followers.filter((id) => id.toString() !== userId);
-    await target.save();
+    target.followers = target.followers.filter((id) => id !== clerkId);
+    user.following = user.following.filter((id) => id !== targetClerkId);
 
-    res.json({ success: true, target });
+    await target.save();
+    await user.save();
+
+    res.json({ success: true, message: "Unfollowed successfully", target });
   } catch (error) {
     console.error("Error unfollowing:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
+
 // ------------------- GET ALL USERS -------------------
 router.get("/", async (req, res) => {
   try {
-    const { currentUserId } = req.query;
+    const { clerkId } = req.query; // 👈 current logged-in user's Clerk ID (optional)
 
-    if (!currentUserId) {
-      return res.status(400).json({ error: "currentUserId is required" });
+    const users = await User.find();
+
+    // If no logged-in user provided, return all users
+    if (!clerkId) {
+      return res.json(users);
     }
 
-    // Get current user by clerkId
-    const currentUser = await User.findOne({ clerkId: currentUserId });
+    // Get the current user for following info
+    const currentUser = await User.findOne({ clerkId });
 
-    if (!currentUser) {
-      return res.status(404).json({ error: "Current user not found" });
-    }
-
-    // Fetch all users
-    const users = await User.find({});
-
-    // Attach isFollowing flag
     const data = users.map((u) => ({
       _id: u._id,
       clerkId: u.clerkId,
@@ -266,20 +274,23 @@ router.get("/", async (req, res) => {
       lastName: u.lastName,
       nickName: u.nickName,
       image: u.image,
-      accountType: u.accountType,
+      county: u.county,
+      constituency: u.constituency,
+      ward: u.ward,
       followers: u.followers,
       following: u.following,
-      isFollowing: currentUser.following.some(
-        (id) => id.toString() === u._id.toString()
-      ),
+      isFollowing: currentUser?.following?.includes(u.clerkId) || false,
     }));
 
     res.json(data);
   } catch (err) {
-    console.error("Error fetching members:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: "Server error fetching users" });
   }
 });
+
+
+
 
 
 

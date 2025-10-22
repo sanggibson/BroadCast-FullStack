@@ -1,93 +1,3 @@
-// import React from "react";
-// import {
-//   View,
-//   Text,
-//   Image,
-//   StyleSheet,
-//   ImageSourcePropType,
-//   TouchableOpacity,
-// } from "react-native";
-// import StatusList from "../StatusScreens/StatusList";
-// import { useLevel } from "@/context/LevelContext";
-// import { useAuth } from "@clerk/clerk-expo";
-// import { useTheme } from "@/context/ThemeContext";
-
-// export default function HeaderComponent() {
-//   const { currentLevel } = useLevel();
-//   const { theme } = useTheme();
-//   const { signOut } = useAuth();
-
-//   const formattedTitle: string =
-//     currentLevel?.type === "home"
-//       ? "Home"
-//       : currentLevel?.value && currentLevel?.type
-//       ? `${capitalize(currentLevel.value)} ${capitalize(currentLevel.type)}`
-//       : "Update in your Profile";
-
-//   function capitalize(str: string | undefined): string {
-//     return typeof str === "string"
-//       ? str.charAt(0).toUpperCase() + str.slice(1)
-//       : "";
-//   }
-
-//   return (
-//     <View
-//       style={[
-//         styles.container,
-//         { backgroundColor: theme.card, shadowColor: theme.text },
-//       ]}
-//     >
-//       <View style={styles.headerRow}>
-//         <Text />
-//         <Text style={[styles.title, { color: theme.text }]}>
-//           {formattedTitle}
-//         </Text>
-//         <TouchableOpacity onPress={() => signOut()}>
-//           <Image
-//             source={require("@/assets/icon.jpg") as ImageSourcePropType}
-//             style={styles.avatar}
-//           />
-//         </TouchableOpacity>
-//       </View>
-//       <View style={styles.statusListContainer}>
-//         <StatusList currentLevel={currentLevel} />
-//       </View>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     shadowOpacity: 0.1,
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowRadius: 4,
-//     elevation: 2,
-//     borderRadius: 10
-//   },
-//   headerRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     alignItems: "center",
-//     width: "100%",
-//     paddingHorizontal: 10,
-//   },
-//   title: {
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     textAlign: "center",
-//   },
-//   avatar: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 20,
-//     marginRight: 10,
-//   },
-//   statusListContainer: {
-//     minHeight: 100,
-//     shadowRadius: 4,
-//   },
-// });
-
 import React from "react";
 import {
   View,
@@ -163,6 +73,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     borderRadius: 10,
+    paddingTop: 20
   },
   headerRow: {
     flexDirection: "row",

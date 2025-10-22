@@ -52,7 +52,7 @@ export default function App() {
                   </Chat>
                 </OverlayProvider>
               </ThemeProvider>
-            </NavigationContainer>
+            </NavigationContainer> 
           </LevelProvider>
         </UserOnboardingProvider>
       </GestureHandlerRootView>
@@ -60,8 +60,9 @@ export default function App() {
   };
   return (
     <ClerkProvider
+      telemetry={false}
       tokenCache={tokenCache}
-      publishableKey="pk_test_YXNzdXJlZC13aWxkY2F0LTcxLmNsZXJrLmFjY291bnRzLmRldiQ"
+      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
     >
       <AppContent />
     </ClerkProvider>

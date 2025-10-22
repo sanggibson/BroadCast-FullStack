@@ -172,4 +172,21 @@ router.delete("/:commentId", async (req, res) => {
   }
 });
 
+router.patch("/:id/views", async (req, res) => {
+  try {
+    const post = await Post.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.json({ message: "View count incremented", views: post.views });
+  } catch (error) {
+    console.error("Error updating views:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

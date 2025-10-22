@@ -75,15 +75,15 @@ const StatusList: React.FC<StatusListProps> = ({ currentLevel }) => {
     )
   );
 
-  const formattedTitle =
-    currentLevel.type === "home"
-      ? "Home"
-      : `${
-          currentLevel.value.charAt(0).toUpperCase() +
-          currentLevel.value.slice(1)
-        } ${
-          currentLevel.type.charAt(0).toUpperCase() + currentLevel.type.slice(1)
-        }`;
+  // const formattedTitle =
+  //   currentLevel.type === "home"
+  //     ? "Home"
+  //     : `${
+  //         currentLevel.value.charAt(0).toUpperCase() +
+  //         currentLevel.value.slice(1)
+  //       } ${
+  //         currentLevel.type.charAt(0).toUpperCase() + currentLevel.type.slice(1)
+  //       }`;
 
   return (
     <View>

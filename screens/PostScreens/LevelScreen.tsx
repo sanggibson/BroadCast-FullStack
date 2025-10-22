@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator, Image } from "react-native";
 import { FloatingAction } from "react-native-floating-action";
 import { Feather, Ionicons, FontAwesome5, AntDesign } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -8,6 +8,8 @@ import { useLevel } from "@/context/LevelContext";
 import { useUser } from "@clerk/clerk-expo";
 import PostScreen from "./PostScreen";
 import { RootStackParamList } from "@/types/navigation";
+import { useTheme } from "@/context/ThemeContext";
+import { LoaderKitView } from "react-native-loader-kit";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "GoLive">;
 
@@ -17,6 +19,8 @@ const LevelScreen: React.FC = () => {
     useLevel();
   const { user, isLoaded } = useUser();
   const [userReady, setUserReady] = useState(false);
+  const [loading, setLoading] = useState(false); // 👈 NEW
+  const { theme } = useTheme();
 
   // Wait for Clerk user to load
   useEffect(() => {
@@ -64,33 +68,67 @@ const LevelScreen: React.FC = () => {
     },
   ];
 
-  const handleActionPress = (name?: string) => {
-    switch (name) {
-      case "home":
-        setCurrentLevel({ type: "home", value: "home" });
-        break;
-      case "county":
-        setCurrentLevel({ type: "county", value: userDetails?.county || null });
-        break;
-      case "constituency":
-        setCurrentLevel({
-          type: "constituency",
-          value: userDetails?.constituency || null,
-        });
-        break;
-      case "ward":
-        setCurrentLevel({ type: "ward", value: userDetails?.ward || null });
-        break;
-      case "GoLive":
-        navigation.navigate("VideoCallScreen", { roomName: user?.id! });
-        break;
+  const handleActionPress = async (name?: string) => {
+    if (name === "GoLive") {
+      navigation.navigate("VideoCallScreen", { roomName: user?.id! });
+      return;
     }
+
+    setLoading(true); // 👈 Start loading
+
+    // Simulate data change or fetch delay
+    setTimeout(() => {
+      switch (name) {
+        case "home":
+          setCurrentLevel({ type: "home", value: "home" });
+          break;
+        case "county":
+          setCurrentLevel({
+            type: "county",
+            value: userDetails?.county || null,
+          });
+          break;
+        case "constituency":
+          setCurrentLevel({
+            type: "constituency",
+            value: userDetails?.constituency || null,
+          });
+          break;
+        case "ward":
+          setCurrentLevel({
+            type: "ward",
+            value: userDetails?.ward || null,
+          });
+          break;
+      }
+      setLoading(false); // 👈 Stop loading after level change
+    }, 500); // adjust timing as needed
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      {/* Pass currentLevel as prop */}
-      <PostScreen currentLevel={currentLevel} />
+      {loading ? (
+        // 🔄 Show loading while switching
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: theme.background,
+          }}
+        >
+          {/* Logo or app icon */}
+          <LoaderKitView
+            style={{ width: 50, height: 50 }}
+            name={"BallScaleRippleMultiple"}
+            animationSpeedMultiplier={1.0} // speed up/slow down animation, default: 1.0, larger is faster
+            color={theme.text} // Optional: color can be: 'red', 'green',... or '#ddd', '#ffffff',...
+          />
+        </View>
+      ) : (
+        // 🧱 Show PostScreen when ready
+        <PostScreen currentLevel={currentLevel} />
+      )}
 
       <FloatingAction
         actions={actions}
