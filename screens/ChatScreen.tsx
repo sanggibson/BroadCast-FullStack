@@ -81,13 +81,8 @@
 
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import {
-  Chat,
-  Channel,
-  MessageList,
-  MessageInput,
-} from "stream-chat-react-native";
 import { StreamChat } from "stream-chat";
+import { Channel, Chat, MessageInput, MessageList } from "stream-chat-expo";
 
 const chatClient = StreamChat.getInstance(process.env.STREAM_CHAT_KEY!);
 

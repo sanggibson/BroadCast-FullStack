@@ -60,7 +60,7 @@ const LocationSelection = () => {
 
     try {
       await axios.post(
-        "http://192.168.100.4:3000/api/users/update-location",
+        "http://192.168.100.28:3000/api/users/update-location",
         payload
       );
 

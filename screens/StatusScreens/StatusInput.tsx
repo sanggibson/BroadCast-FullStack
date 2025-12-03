@@ -107,7 +107,7 @@ const StatusInput = () => {
     }
 
     try {
-      await axios.post(`http://192.168.100.4:3000/api/statuses`, {
+      await axios.post(`http://192.168.100.28:3000/api/statuses`, {
         userId: user?.id,
         userName:
           user?.firstName ||

@@ -20,6 +20,7 @@ import { useLevel } from "@/context/LevelContext";
 import Video from "react-native-video";
 import * as Linking from "expo-linking";
 import { useTheme } from "@/context/ThemeContext";
+import { API_URL } from "@/config";
 
 const InputScreen = () => {
   const [cast, setCast] = useState("");
@@ -214,7 +215,7 @@ const InputScreen = () => {
       };
 
       const res = await axios.post(
-        `http://192.168.100.4:3000/api/posts`,
+        `http://${API_URL}/api/posts`,
         payload
       );
 

@@ -27,7 +27,7 @@ export default function HeaderComponent() {
     <View
       style={[
         styles.container,
-        { backgroundColor: theme.card, shadowColor: theme.text },
+        { backgroundColor: theme.background, shadowColor: theme.text },
       ]}
     >
       <View style={styles.headerRow}>

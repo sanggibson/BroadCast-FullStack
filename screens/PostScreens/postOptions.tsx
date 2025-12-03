@@ -17,6 +17,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
+import { API_URL } from "@/config";
 
 interface PostOptionsProps {
   post: { _id: string; userId: string };
@@ -37,7 +38,7 @@ const PostOptionsModal: React.FC<PostOptionsProps> = ({
 }) => {
   const { theme } = useTheme();
   const isOwner = currentUserId === post.userId;
-  const postLink = `http://192.168.100.4:3000/api/posts/${post._id}`;
+  const postLink = `http://192.168.100.28:3000/api/posts/${post._id}`;
 
   const options = [
     {

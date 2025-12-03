@@ -1,56 +1,86 @@
-import { useUser } from "@clerk/clerk-expo";
 import React, { useEffect, useState } from "react";
-import { View, Text } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { StreamChat } from "stream-chat";
-import {
-  Chat,
-  Channel,
-  MessageList,
-  MessageInput,
-} from "stream-chat-react-native";
+import { Chat, Channel, MessageList, MessageInput } from "stream-chat-expo";
+import axios from "axios";
 
-// ✅ Initialize client
-const client = StreamChat.getInstance(process.env.STREAM_CHAT_KEY);
+const chatClient = StreamChat.getInstance(
+  process.env.EXPO_PUBLIC_STREAM_CHAT_KEY!
+);
 
-const ChatScreen = () => {
+type ChatScreenProps = {
+  clerkId: string; // ✅ Clerk ID from your auth
+  firstName: string;
+  image?: string;
+  channelId: string;
+};
+
+const ChatScreen: React.FC<ChatScreenProps> = ({
+  clerkId,
+  firstName,
+  image,
+  channelId,
+}) => {
   const [channel, setChannel] = useState<any>(null);
-  const { user } = useUser();
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const setupChat = async () => {
-      // ✅ Connect a user
-      await client.connectUser(
-        {
-          id: user?.id,
-          name: user?.firstName,
-        },
-        client.devToken(user?.id) // devToken only for dev mode
-      );
+    const initChat = async () => {
+      try {
+        // ✅ Get a Stream chat token from your backend
+        const response = await axios.post(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/users/create-or-get-user`,
+          {
+            clerkId,
+            firstName,
+            image,
+            email: `${clerkId}@placeholder.com`, // or real email
+          }
+        );
 
-      // ✅ Create or get a channel
-      const newChannel = client.channel(user.id, "chat-room", {
-        name: "My Chat Room",
-      });
+        const { chatToken } = response.data;
 
-      await newChannel.watch();
+        // ✅ Connect user with token from backend
+        await chatClient.connectUser(
+          {
+            id: clerkId,
+            name: firstName,
+            image,
+          },
+          chatToken
+        );
 
-      setChannel(newChannel);
+        // ✅ Get or create a channel
+        const c = chatClient.channel("messaging", channelId, {
+          name: "Private Chat",
+          members: [clerkId],
+        });
+
+        await c.watch();
+        setChannel(c);
+        setIsReady(true);
+      } catch (err) {
+        console.error("Stream init error:", err);
+      }
     };
 
-    setupChat();
+    initChat();
 
-    // ✅ Cleanup
     return () => {
-      client.disconnectUser();
+      chatClient.disconnectUser();
     };
-  }, []);
+  }, [clerkId, channelId]);
 
-  if (!channel) {
-    return <Text>Loading chat...</Text>;
+  if (!isReady || !channel) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color="#555" />
+      </View>
+    );
   }
 
   return (
-    <Chat client={client}>
+    <Chat client={chatClient}>
       <Channel channel={channel}>
         <MessageList />
         <MessageInput />

@@ -10,9 +10,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider } from "./context/ThemeContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { StreamChat } from "stream-chat";
-import { Chat, OverlayProvider } from "stream-chat-react-native";
+import { Chat, OverlayProvider } from "stream-chat-expo";
+import { FollowProvider } from "./context/FollowContext";
 
-const client = StreamChat.getInstance(process.env.STREAM_CHAT_KEY);
+const client = StreamChat.getInstance(process.env.EXPO_PUBLIC_STREAM_CHAT_KEY!);
 
 export default function App() {
   const tokenCache = {
@@ -40,19 +41,21 @@ export default function App() {
           <LevelProvider>
             <NavigationContainer>
               <ThemeProvider>
-                <OverlayProvider>
-                  <Chat client={client}>
-                    <StripeProvider
-                      publishableKey={
-                        process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-                      }
-                    >
-                      <RootNavigator />
-                    </StripeProvider>
-                  </Chat>
-                </OverlayProvider>
+                <FollowProvider>
+                  <OverlayProvider>
+                    <Chat client={client}>
+                      <StripeProvider
+                        publishableKey={
+                          process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+                        }
+                      >
+                        <RootNavigator />
+                      </StripeProvider>
+                    </Chat>
+                  </OverlayProvider>
+                </FollowProvider>
               </ThemeProvider>
-            </NavigationContainer> 
+            </NavigationContainer>
           </LevelProvider>
         </UserOnboardingProvider>
       </GestureHandlerRootView>

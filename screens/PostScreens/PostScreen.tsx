@@ -23,7 +23,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LoaderKitView } from "react-native-loader-kit";
 
-const BASE_URL = `http://192.168.100.4:3000`;
+const BASE_URL = "http://192.168.100.4:3000";
 
 type Props = {
   currentLevel: { type: string; value: string | null };

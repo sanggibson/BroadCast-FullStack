@@ -18,6 +18,7 @@ import SplashScreen from "@/screens/AuthScreens/SplashScreen";
 import VideoCallScreen from "@/screens/VideoCallScreen";
 import ChatScreen from "@/screens/ChatScreen";
 import CommentsScreen from "@/screens/PostScreens/CommentScreen";
+import AIChatScreen from "@/screens/AIChatScreen";
 
 const RootNavigator = () => {
   const Stack = createNativeStackNavigator();
@@ -81,6 +82,11 @@ const RootNavigator = () => {
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} />
+      <Stack.Screen
+        name="AIChatScreen"
+        component={AIChatScreen}
+        options={{ title: "AI Chat", headerShown: true }}
+      />
     </Stack.Navigator>
   );
 };

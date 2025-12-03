@@ -40,7 +40,7 @@ export const LevelProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const token = await getToken();
       const res = await axios.get(
-        `http://192.168.100.4:3000/api/users/${user.id}`,
+        `http://192.168.100.28:3000/api/users/${user.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

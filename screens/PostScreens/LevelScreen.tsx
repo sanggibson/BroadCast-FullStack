@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator, Image } from "react-native";
+import { View } from "react-native";
 import { FloatingAction } from "react-native-floating-action";
 import { Feather, Ionicons, FontAwesome5, AntDesign } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -19,10 +19,9 @@ const LevelScreen: React.FC = () => {
     useLevel();
   const { user, isLoaded } = useUser();
   const [userReady, setUserReady] = useState(false);
-  const [loading, setLoading] = useState(false); // 👈 NEW
+  const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
 
-  // Wait for Clerk user to load
   useEffect(() => {
     if (isLoaded && user?.id && user?.firstName) {
       setUserReady(true);
@@ -35,48 +34,61 @@ const LevelScreen: React.FC = () => {
       text: "Home",
       icon: <Ionicons name="earth-outline" size={20} color="#fff" />,
       name: "home",
-      position: 0,
+      position: 5,
       color: "#1F2937",
     },
     {
       text: "County",
       icon: <Feather name="map" size={20} color="#fff" />,
       name: "county",
-      position: 1,
+      position: 4,
       color: "#1F2937",
     },
     {
       text: "Constituency",
       icon: <FontAwesome5 name="flag" size={20} color="#fff" />,
       name: "constituency",
-      position: 2,
+      position: 3,
       color: "#1F2937",
     },
     {
       text: "Ward",
       icon: <FontAwesome5 name="map-pin" size={20} color="#fff" />,
       name: "ward",
-      position: 3,
+      position: 2,
       color: "#1F2937",
     },
     {
       text: "Go Live",
       icon: <AntDesign name="videocamera" size={20} color="#fff" />,
       name: "GoLive",
-      position: 4,
+      position: 1,
+      color: "#1F2937",
+    },
+    {
+      text: "Chat With AI",
+      icon: <Feather name="message-circle" size={20} color="#fff" />,
+      name: "AIChat",
+      position: 0,
       color: "#1F2937",
     },
   ];
 
   const handleActionPress = async (name?: string) => {
+    if (!name) return;
+
     if (name === "GoLive") {
       navigation.navigate("VideoCallScreen", { roomName: user?.id! });
       return;
     }
 
-    setLoading(true); // 👈 Start loading
+    if (name === "AIChat") {
+      navigation.navigate("AIChatScreen"); // 👈 make sure this route exists
+      return;
+    }
 
-    // Simulate data change or fetch delay
+    setLoading(true);
+
     setTimeout(() => {
       switch (name) {
         case "home":
@@ -101,32 +113,27 @@ const LevelScreen: React.FC = () => {
           });
           break;
       }
-      setLoading(false); // 👈 Stop loading after level change
-    }, 500); // adjust timing as needed
+      setLoading(false);
+    }, 500);
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       {loading ? (
-        // 🔄 Show loading while switching
         <View
           style={{
             flex: 1,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: theme.background,
           }}
         >
-          {/* Logo or app icon */}
           <LoaderKitView
-            style={{ width: 50, height: 50 }}
-            name={"BallScaleRippleMultiple"}
-            animationSpeedMultiplier={1.0} // speed up/slow down animation, default: 1.0, larger is faster
-            color={theme.text} // Optional: color can be: 'red', 'green',... or '#ddd', '#ffffff',...
+            style={{ width: 60, height: 60 }}
+            name="BallScaleRippleMultiple"
+            color={theme.text}
           />
         </View>
       ) : (
-        // 🧱 Show PostScreen when ready
         <PostScreen currentLevel={currentLevel} />
       )}
 

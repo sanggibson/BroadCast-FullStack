@@ -24,7 +24,7 @@
 // import { useTheme } from "@/context/ThemeContext";
 // import moment from "moment";
 
-// const API_URL = `http://192.168.100.4:3000/api/comments`;
+// const API_URL = `http://192.168.100.28:3000/api/comments`;
 
 // export default function CommentsScreen() {
 //   const route = useRoute<any>();
@@ -50,7 +50,7 @@
 //   const fetchComments = async () => {
 //     try {
 //       setLoading(true);
-//       const res = await axios.get(`http://192.168.100.4:3000/${post._id}`);
+//       const res = await axios.get(`http://192.168.100.28:3000/${post._id}`);
 //       setComments(res.data);
 //     } catch (err) {
 //       console.error("Error fetching comments:", err);
@@ -81,7 +81,7 @@
   
 //   const handleDeleteComment = async (commentId: string) => {
 //     try {
-//       await axios.delete(`http://192.168.100.4:3000/${commentId}`);
+//       await axios.delete(`http://192.168.100.28:3000/${commentId}`);
 //       setComments((prev) => prev.filter((c) => c._id !== commentId));
 //     } catch (err) {
 //       console.error("Error deleting comment:", err);
@@ -106,7 +106,7 @@
 //     );
 
 //     try {
-//       await axios.post(`http://192.168.100.4:3000/${commentId}/like`, { userId: user.id });
+//       await axios.post(`http://192.168.100.28:3000/${commentId}/like`, { userId: user.id });
 //     } catch (err) {
 //       console.error("Error liking comment:", err);
 //       fetchComments();
@@ -137,7 +137,7 @@
 //    );
 
 //    try {
-//      await axios.post(`http://192.168.100.4:3000/${commentId}/replies/${replyId}/like`, {
+//      await axios.post(`http://192.168.100.28:3000/${commentId}/replies/${replyId}/like`, {
 //        userId: user.id,
 //      });
 //    } catch (err) {
@@ -150,7 +150,7 @@
 //   const handleAddReply = async () => {
 //     if (!replyText.trim() || !replyingTo) return;
 //     try {
-//       await axios.post(`http://192.168.100.4:3000/${replyingTo._id}/reply`, {
+//       await axios.post(`http://192.168.100.28:3000/${replyingTo._id}/reply`, {
 //         userId: user?.id,
 //         userName: user?.lastName,
 //         text: replyText,

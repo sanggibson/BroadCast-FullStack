@@ -119,13 +119,7 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUserId }) => {
             <Text style={styles.youText}>You</Text>
           </View>
         ) : (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              item.isFollowing ? styles.unfollowBtn : styles.followBtn,
-            ]}
-            onPress={() => toggleFollow(item)}
-          >
+          <TouchableOpacity onPress={() => toggleFollow(item)}>
             <Text
               style={item.isFollowing ? styles.unfollowText : styles.followText}
             >
@@ -205,10 +199,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
   },
-  followBtn: { borderColor: "#1DA1F2", backgroundColor: "#1DA1F2" },
-  unfollowBtn: { borderColor: "#ccc", backgroundColor: "#fff" },
-  followText: { color: "#fff", fontWeight: "600" },
-  unfollowText: { color: "#333", fontWeight: "600" },
+  followText: {
+    color: "blue", // Blue text for Follow
+    fontWeight: "bold",
+  },
+  unfollowText: {
+    color: "red", // Red text for Unfollow
+    fontWeight: "bold",
+  },
 
   // "You" chip (Twitter style)
   youChip: {
